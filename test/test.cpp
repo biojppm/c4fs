@@ -7,12 +7,12 @@ namespace fs {
 
 struct ScopedTestFile
 {
-    char m_name[128];
+    char m_name[32];
     operator const char* () const { return m_name; }
-    ScopedTestFile() : m_name()
+    ScopedTestFile(const char* access="wb") : m_name()
     {
         tmpnam("scoped_file.XXXXXX.test", m_name, sizeof(m_name));
-        ::FILE *f = fopen(m_name, "w");
+        ::FILE *f = fopen(m_name, access);
         fclose(f);
     }
     ~ScopedTestFile()
@@ -23,7 +23,7 @@ struct ScopedTestFile
 
 struct ScopedTestDir
 {
-    char m_name[128];
+    char m_name[32];
     operator const char* () const { return m_name; }
     ScopedTestDir() : m_name()
     {
@@ -126,6 +126,72 @@ TEST(path_type, dir)
     EXPECT_EQ(path_type(file), DIR);
     EXPECT_FALSE(is_file(file));
     EXPECT_TRUE(is_dir(file));
+}
+
+const char test_contents[] = R"(
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+\0)";
+
+TEST(ScopedTmpFile, c_str)
+{
+    auto  wfile = ScopedTmpFile(test_contents, strlen(test_contents));
+    FILE *rfile = fopen(wfile.m_name, "rb");
+
+    fseek(rfile, 0, SEEK_END);
+    size_t sz = ftell(rfile);
+    rewind(rfile);
+    EXPECT_EQ(sizeof(test_contents), sz+1);
+
+    char cmp[2*sizeof(test_contents)] = {0};
+    fread(cmp, 1, sz, rfile);
+    EXPECT_STREQ(cmp, test_contents);
+}
+
+TEST(file_put_contents, basic)
+{
+    char filename[32];
+
+    tmpnam("c4fpc.XXXXXX.test", filename, sizeof(filename));
+
+    file_put_contents(filename, test_contents, strlen(test_contents));
+
+    auto rfile = fopen(filename, "rb");
+
+    fseek(rfile, 0, SEEK_END);
+    size_t sz = ftell(rfile);
+    rewind(rfile);
+
+    char cmp[2*sizeof(test_contents)] = {0};
+    fread(cmp, 1, sz, rfile);
+    EXPECT_STREQ(cmp, test_contents);
+}
+
+TEST(file_get_contents, basic)
+{
+    auto  wfile = ScopedTmpFile(test_contents, strlen(test_contents));
+    char cmp[2*sizeof(test_contents)] = {0};
+    size_t sz = file_get_contents(wfile.m_name, cmp, sizeof(cmp));
+    EXPECT_EQ(sizeof(test_contents), sz+1);
+    EXPECT_STREQ(cmp, test_contents);
+}
+
+TEST(file_get_contents, std_string)
+{
+    auto  wfile = ScopedTmpFile(test_contents, strlen(test_contents));
+    std::string s;
+    size_t sz = file_get_contents(wfile.m_name, cmp, sizeof(cmp));
+    EXPECT_EQ(sizeof(test_contents), sz+1);
+    EXPECT_STREQ(cmp, test_contents);
 }
 
 } // namespace fs

@@ -4,6 +4,7 @@
 #include <c4/platform.hpp>
 #include <c4/error.hpp>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef C4_POSIX
 typedef struct _ftsent FTSENT;
@@ -24,8 +25,6 @@ typedef enum {
     INVALID
 } PathType_e;
 
-constexpr const char* default_access = "wb";
-
 
 //-----------------------------------------------------------------------------
 
@@ -39,7 +38,18 @@ void mkdir(const char *pathname);
 void rmdir(const char *pathname);
 void mkdirs(char *pathname);
 
-const char* tempnam(const char *fmt, char *buf, size_t bufsz);
+
+//-----------------------------------------------------------------------------
+
+const char * tmpnam(const char *fmt, char *buf, size_t bufsz);
+
+template< class CharContainer >
+const char * tmpnam(const char *fmt, CharContainer *buf)
+{
+    buf->resize(strlen(fmt) + 1);
+    return tmpnam(fmt, (*buf)[0], buf->size());
+}
+
 
 //-----------------------------------------------------------------------------
 
@@ -77,31 +87,6 @@ char *cwd(CharContainer *v)
 void delete_file(const char *filename);
 void delete_path(const char *pathname, bool recursive=false);
 
-
-//-----------------------------------------------------------------------------
-
-template< class CharContainer >
-void file_get_contents(const char *filename, CharContainer *v, const char* access="rb")
-{
-    ::FILE *fp = ::fopen(filename, access);
-    C4_CHECK_MSG(fp != nullptr, "could not open file");
-    ::fseek(fp, 0, SEEK_END);
-    v->resize(::ftell(fp));
-    ::rewind(fp);
-    ::fread(&(*v)[0], 1, v->size(), fp);
-    ::fclose(fp);
-}
-
-template< class CharContainer >
-void file_put_contents(const char *filename, CharContainer const& v, const char* access=default_access)
-{
-    ::FILE *fp = ::fopen(filename, access);
-    C4_CHECK_MSG(fp != nullptr, "could not open file");
-    ::fwrite(&v[0], 1, v.size(), fp);
-    ::fclose(fp);
-}
-
-
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -125,13 +110,36 @@ int walk(const char *pathname, PathVisitor fn, void *user_data=nullptr);
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
+size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
+void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
 
-const char* tmpnam(const char *fmt, char *buf, size_t bufsz);
+template< class CharContainer >
+size_t file_get_contents(const char *filename, CharContainer *v, const char* access="rb")
+{
+    ::FILE *fp = ::fopen(filename, access);
+    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    ::fseek(fp, 0, SEEK_END);
+    v->resize(::ftell(fp));
+    ::rewind(fp);
+    ::fread(&(*v)[0], 1, v->size(), fp);
+    ::fclose(fp);
+    return v->size();
+}
 
-/** the dtor deletes the temp file */
+
+template< class CharContainer >
+inline void file_put_contents(const char *filename, CharContainer const& v, const char* access="wb")
+{
+    file_put_contents(filename, &v[0], v.size(), access);
+}
+
+
+//-----------------------------------------------------------------------------
+/** open a writeable temporary file in the current working directory.
+ * The dtor deletes the temporary file. */
 struct ScopedTmpFile
 {
-    const char* m_name;
+    char m_name[32];
     ::FILE* m_file;
 
     const char* name() const { return m_name; }
@@ -142,22 +150,23 @@ struct ScopedTmpFile
         ::fclose(m_file);
         delete_file(m_name);
         m_file = nullptr;
-        m_name = nullptr;
     }
 
-    ScopedTmpFile(const char *access=default_access)
-        : m_name(::tmpnam(nullptr)), m_file(::fopen(m_name, access))
+    ScopedTmpFile(const char *access="wb")
     {
+        tmpnam("c4_ScopedTmpFile.XXXXXX.tmp", m_name, sizeof(m_name));
+        m_file = fopen(m_name, access);
     }
 
-    ScopedTmpFile(const char* contents, size_t sz, const char *access=default_access)
+    ScopedTmpFile(const char* contents, size_t sz, const char *access="wb")
         : ScopedTmpFile(access)
     {
         ::fwrite(contents, 1, sz, m_file);
+        ::fflush(m_file);
     }
 
     template< class CharContainer >
-    ScopedTmpFile(CharContainer const& contents, const char* access=default_access)
+    ScopedTmpFile(CharContainer const& contents, const char* access="wb")
         : ScopedTmpFile(&contents[0], contents.size(), access)
     {
     }

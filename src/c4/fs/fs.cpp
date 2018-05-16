@@ -279,13 +279,38 @@ const char* tmpnam(const char *fmt_, char *buf, size_t bufsz)
 
     for(size_t i = 0; i < 3; ++i)
     {
-        char * w = buf + (pos + 2*i);
         uint8_t num = rand_dist(rand_eng);
+        char * w = buf + (pos + 2*i);
         w[0] = hexchars[(num >> 0) & 0xf];
         w[1] = hexchars[(num >> 4) & 0xf];
     }
 
     return buf;
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+size_t file_get_contents(const char *filename, char *buf, size_t sz, const char* access)
+{
+    ::FILE *fp = ::fopen(filename, access);
+    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    ::fseek(fp, 0, SEEK_END);
+    size_t fs = ::ftell(fp);
+    ::rewind(fp);
+    if(fs < sz) ::fread(buf, 1, fs, fp);
+    ::fclose(fp);
+    return fs;
+}
+
+void file_put_contents(const char *filename, const char *buf, size_t sz, const char* access)
+{
+    ::FILE *fp = ::fopen(filename, access);
+    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    ::fwrite(buf, 1, sz, fp);
+    ::fclose(fp);
 }
 
 } // namespace fs
