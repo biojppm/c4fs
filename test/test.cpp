@@ -189,9 +189,9 @@ TEST(file_get_contents, std_string)
 {
     auto  wfile = ScopedTmpFile(test_contents, strlen(test_contents));
     std::string s;
-    size_t sz = file_get_contents(wfile.m_name, cmp, sizeof(cmp));
+    size_t sz = file_get_contents(wfile.m_name, &s);
     EXPECT_EQ(sizeof(test_contents), sz+1);
-    EXPECT_STREQ(cmp, test_contents);
+    EXPECT_STREQ(s.c_str(), test_contents);
 }
 
 } // namespace fs
