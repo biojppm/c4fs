@@ -74,11 +74,12 @@ template< class CharContainer >
 char *cwd(CharContainer *v)
 {
     if(v->empty()) v->resize(16);
-    while( ! cwd((*v)[0], v->size()))
+    while( ! cwd(&(*v)[0], v->size()))
     {
         v->resize(v->size() * 2);
     }
-    return (*v)[0];
+    v->resize(strlen(v->data()));
+    return &(*v)[0];
 }
 
 
@@ -155,7 +156,7 @@ struct ScopedTmpFile
     ScopedTmpFile(const char *access="wb")
     {
         tmpnam("c4_ScopedTmpFile.XXXXXX.tmp", m_name, sizeof(m_name));
-        m_file = fopen(m_name, access);
+        m_file = ::fopen(m_name, access);
     }
 
     ScopedTmpFile(const char* contents, size_t sz, const char *access="wb")
