@@ -142,33 +142,36 @@ struct ScopedTmpFile
 {
     char m_name[32];
     ::FILE* m_file;
+    bool m_delete;
 
     const char* name() const { return m_name; }
     ::FILE* file() const { return m_file; }
+    void do_delete(bool yes) { m_delete = yes; }
 
     ~ScopedTmpFile()
     {
         ::fclose(m_file);
-        delete_file(m_name);
+        if(m_delete) delete_file(m_name);
         m_file = nullptr;
     }
 
-    ScopedTmpFile(const char *access="wb")
+    ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb")
     {
-        tmpnam("c4_ScopedTmpFile.XXXXXX.tmp", m_name, sizeof(m_name));
+        tmpnam(name_pattern, m_name, sizeof(m_name));
         m_file = ::fopen(m_name, access);
+        m_delete = true;
     }
 
-    ScopedTmpFile(const char* contents, size_t sz, const char *access="wb")
-        : ScopedTmpFile(access)
+    ScopedTmpFile(const char* contents, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb")
+        : ScopedTmpFile(name_pattern, access)
     {
         ::fwrite(contents, 1, sz, m_file);
         ::fflush(m_file);
     }
 
     template< class CharContainer >
-    ScopedTmpFile(CharContainer const& contents, const char* access="wb")
-        : ScopedTmpFile(&contents[0], contents.size(), access)
+    ScopedTmpFile(CharContainer const& contents, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb")
+        : ScopedTmpFile(&contents[0], contents.size(), name_pattern, access)
     {
     }
 };
