@@ -41,8 +41,14 @@ void mkdirs(char *pathname);
 
 //-----------------------------------------------------------------------------
 
+/** create a temporary name from a format. The format is scanned for
+ * appearances of "XX"; each appearance of "XX" will be substituted by
+ * an hexadecimal byte (ie 0x00...0xff). */
 const char * tmpnam(const char *fmt, char *buf, size_t bufsz);
 
+/** create a temporary name from a format. The format is scanned for
+ * appearances of "XX"; each appearance of "XX" will be substituted by
+ * an hexadecimal byte (ie 0x00...0xff). */
 template< class CharContainer >
 const char * tmpnam(const char *fmt, CharContainer *buf)
 {

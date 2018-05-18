@@ -264,28 +264,28 @@ int walk(const char *pathname, PathVisitor fn, void *user_data)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-const char* tmpnam(const char *fmt_, char *buf, size_t bufsz)
+const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz)
 {
     c4::csubstr fmt = to_csubstr(fmt_);
+    c4::substr buf(buf_, fmt.len+1);
     C4_CHECK(bufsz > fmt.len);
-    C4_CHECK(fmt.find("XXXXXX") != csubstr::npos);
-    auto pos = fmt.find("XXXXXX");
-    memcpy(buf, fmt.str, fmt.len);
-    buf[fmt.len] = '\0';
+    C4_CHECK(fmt.find("XX") != csubstr::npos);
+    memcpy(buf_, fmt.str, fmt.len);
+    buf_[fmt.len] = '\0';
 
+    constexpr static const char hexchars[] = "01234567890abcdef";
     thread_local static std::random_device rand_eng;
     std::uniform_int_distribution<uint8_t> rand_dist;
-    constexpr static const char hexchars[] = "01234567890abcdef";
 
-    for(size_t i = 0; i < 3; ++i)
+    size_t pos = 0;
+    while((pos = buf.find("XX", pos)) != csubstr::npos)
     {
         uint8_t num = rand_dist(rand_eng);
-        char * w = buf + (pos + 2*i);
-        w[0] = hexchars[(num >> 0) & 0xf];
-        w[1] = hexchars[(num >> 4) & 0xf];
+        buf[pos++] = hexchars[(num >> 0) & 0xf];
+        buf[pos++] = hexchars[(num >> 4) & 0xf];
     }
 
-    return buf;
+    return buf_;
 }
 
 
