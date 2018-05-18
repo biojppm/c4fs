@@ -146,7 +146,7 @@ inline void file_put_contents(const char *filename, CharContainer const& v, cons
  * The dtor deletes the temporary file. */
 struct ScopedTmpFile
 {
-    char m_name[32];
+    char m_name[64];
     ::FILE* m_file;
     bool m_delete;
 
