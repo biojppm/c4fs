@@ -281,7 +281,7 @@ const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz)
     while((pos = buf.find("XX", pos)) != csubstr::npos)
     {
         uint8_t num = rand_dist(rand_eng);
-        buf[pos++] = hexchars[(num >> 0) & 0xf];
+        buf[pos++] = hexchars[ num       & 0xf];
         buf[pos++] = hexchars[(num >> 4) & 0xf];
     }
 

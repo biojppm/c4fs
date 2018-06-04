@@ -80,7 +80,7 @@ template< class CharContainer >
 char *cwd(CharContainer *v)
 {
     if(v->empty()) v->resize(16);
-    while( ! cwd(&(*v)[0], v->size()))
+    while(cwd(&(*v)[0], v->size()) == nullptr)
     {
         v->resize(v->size() * 2);
     }
@@ -161,24 +161,49 @@ struct ScopedTmpFile
         m_file = nullptr;
     }
 
-    ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb")
+    ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
     {
+        C4_CHECK(strlen(name_pattern) <= sizeof(m_name));
         tmpnam(name_pattern, m_name, sizeof(m_name));
         m_file = ::fopen(m_name, access);
-        m_delete = true;
+        m_delete = delete_after_use;
     }
 
-    ScopedTmpFile(const char* contents, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb")
-        : ScopedTmpFile(name_pattern, access)
+    ScopedTmpFile(const char* contents, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
+        : ScopedTmpFile(name_pattern, access, delete_after_use)
     {
         ::fwrite(contents, 1, sz, m_file);
         ::fflush(m_file);
     }
 
     template< class CharContainer >
-    ScopedTmpFile(CharContainer const& contents, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb")
-        : ScopedTmpFile(&contents[0], contents.size(), name_pattern, access)
+    ScopedTmpFile(CharContainer const& contents, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb", bool delete_after_use=true)
+        : ScopedTmpFile(&contents[0], contents.size(), name_pattern, access, delete_after_use)
     {
+    }
+
+    const char* full_path(char *buf, size_t sz) const
+    {
+        if(cwd(buf, sz) == nullptr) return nullptr;
+        size_t cwdlen = strlen(buf);
+        size_t namelen = strlen(m_name);
+        if(sz < cwdlen + 1 + namelen) return nullptr;
+        buf[cwdlen] = '/';
+        memcpy(buf+cwdlen+1, m_name, namelen);
+        buf[cwdlen + 1 + namelen] = '\0';
+        return buf;
+    }
+
+    template <class CharContainer>
+    const char* full_path(CharContainer *v) const
+    {
+        if(v->empty()) v->resize(16);
+        while(full_path(&(*v)[0], v->size()) == nullptr)
+        {
+            v->resize(v->size() * 2);
+        }
+        v->resize(strlen(v->data()));
+        return &(*v)[0];
     }
 };
 
