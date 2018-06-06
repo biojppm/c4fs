@@ -10,6 +10,13 @@
 #include <fts.h>
 #endif
 
+#include "c4/c4_push.hpp"
+
+#ifdef C4_WIN
+#   include <windef.h>
+#   include <direct.h>
+#endif
+
 #include <stdio.h>
 #include <random>
 
@@ -27,18 +34,11 @@ int _exec_stat(const char *pathname, struct stat *s)
     C4_ASSERT(pathname[len] == '\0');
     C4_ASSERT(pathname[len-1] != '/' && pathname[len-1] != '\\');
     return ::stat(pathname, s);
-#endif
-#ifdef C4_POSIX
+#elif defined(C4_POSIX)
     return ::stat(pathname, s);
-#endif
-}
-
-int _exec_fstat(int fd, struct stat *s)
-{
-#ifdef C4_POSIX
-    return ::fstat(fd, s);
 #else
     C4_NOT_IMPLEMENTED();
+    return 0;
 #endif
 }
 
@@ -59,6 +59,7 @@ PathType_e _path_type(struct stat *C4_RESTRICT s)
     {
         return DIR;
     }
+#if !defined(C4_WIN)
     else if(_c4is(LNK))
     {
         return SYMLINK;
@@ -71,6 +72,7 @@ PathType_e _path_type(struct stat *C4_RESTRICT s)
     {
         return SOCK;
     }
+#endif
     else //if(_c4is(BLK) || _c4is(CHR))
     {
         return OTHER;
@@ -173,8 +175,10 @@ void mkdirs(char *pathname)
 char *cwd(char *buf, size_t sz)
 {
     C4_ASSERT(sz > 0);
-#ifdef C4_POSIX
+#if defined(C4_POSIX)
     return ::getcwd(buf, sz);
+#elif defined(C4_WIN)
+    return ::getcwd(buf, (int)sz);
 #else
     C4_NOT_IMPLEMENTED();
     return nullptr;
@@ -275,12 +279,12 @@ const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz)
 
     constexpr static const char hexchars[] = "01234567890abcdef";
     thread_local static std::random_device rand_eng;
-    std::uniform_int_distribution<uint8_t> rand_dist;
+    std::uniform_int_distribution<int> rand_dist(0, 255); // N4659 29.6.1.1 [rand.req.genl]/1e requires one of short, int, long, long long, unsigned short, unsigned int, unsigned long, or unsigned long long
 
     size_t pos = 0;
     while((pos = buf.find("XX", pos)) != csubstr::npos)
     {
-        uint8_t num = rand_dist(rand_eng);
+        int num = rand_dist(rand_eng);
         buf[pos++] = hexchars[ num       & 0xf];
         buf[pos++] = hexchars[(num >> 4) & 0xf];
     }
@@ -315,3 +319,5 @@ void file_put_contents(const char *filename, const char *buf, size_t sz, const c
 
 } // namespace fs
 } // namespace c4
+
+#include "c4/c4_pop.hpp"

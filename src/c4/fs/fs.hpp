@@ -10,6 +10,7 @@
 typedef struct _ftsent FTSENT;
 #endif
 
+#include "c4/c4_push.hpp"
 
 namespace c4 {
 namespace fs {
@@ -43,12 +44,12 @@ void mkdirs(char *pathname);
 
 /** create a temporary name from a format. The format is scanned for
  * appearances of "XX"; each appearance of "XX" will be substituted by
- * an hexadecimal byte (ie 0x00...0xff). */
+ * an hexadecimal byte (ie 00...ff). */
 const char * tmpnam(const char *fmt, char *buf, size_t bufsz);
 
 /** create a temporary name from a format. The format is scanned for
  * appearances of "XX"; each appearance of "XX" will be substituted by
- * an hexadecimal byte (ie 0x00...0xff). */
+ * an hexadecimal byte (ie 00...ff). */
 template< class CharContainer >
 const char * tmpnam(const char *fmt, CharContainer *buf)
 {
@@ -126,9 +127,13 @@ size_t file_get_contents(const char *filename, CharContainer *v, const char* acc
     ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
-    v->resize(::ftell(fp));
-    ::rewind(fp);
-    ::fread(&(*v)[0], 1, v->size(), fp);
+    long sz = ::ftell(fp);
+    v->resize((size_t)sz);
+    if(sz)
+    {
+        ::rewind(fp);
+        ::fread(&(*v)[0], 1, v->size(), fp);
+    }
     ::fclose(fp);
     return v->size();
 }
@@ -209,5 +214,7 @@ struct ScopedTmpFile
 
 } // namespace fs
 } // namespace c4
+
+#include "c4/c4_pop.hpp"
 
 #endif /* _c4_FS_HPP_ */
