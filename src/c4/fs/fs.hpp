@@ -122,9 +122,9 @@ size_t file_get_contents(const char *filename,       char *buf, size_t sz, const
 void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
 
 template< class CharContainer >
-size_t file_get_contents(const char *filename, CharContainer *v, const char* access="rb")
+size_t file_get_contents(const char *filename, CharContainer *v)
 {
-    ::FILE *fp = ::fopen(filename, access);
+    ::FILE *fp = ::fopen(filename, "rb");
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
     long sz = ::ftell(fp);
