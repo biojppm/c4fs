@@ -121,7 +121,7 @@ int walk(const char *pathname, PathVisitor fn, void *user_data=nullptr);
 size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
 void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
 
-template< class CharContainer >
+template <class CharContainer>
 size_t file_get_contents(const char *filename, CharContainer *v)
 {
     ::FILE *fp = ::fopen(filename, "rb");
@@ -139,7 +139,7 @@ size_t file_get_contents(const char *filename, CharContainer *v)
 }
 
 
-template< class CharContainer >
+template <class CharContainer>
 inline void file_put_contents(const char *filename, CharContainer const& v, const char* access="wb")
 {
     file_put_contents(filename, &v[0], v.size(), access);
@@ -181,7 +181,7 @@ struct ScopedTmpFile
         ::fflush(m_file);
     }
 
-    template< class CharContainer >
+    template <class CharContainer>
     ScopedTmpFile(CharContainer const& contents, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb", bool delete_after_use=true)
         : ScopedTmpFile(&contents[0], contents.size(), name_pattern, access, delete_after_use)
     {
