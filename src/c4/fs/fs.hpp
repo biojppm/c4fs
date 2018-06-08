@@ -155,16 +155,38 @@ struct ScopedTmpFile
     ::FILE* m_file;
     bool m_delete;
 
+public:
+
     const char* name() const { return m_name; }
     ::FILE* file() const { return m_file; }
     void do_delete(bool yes) { m_delete = yes; }
 
+public:
+
     ~ScopedTmpFile()
     {
-        ::fclose(m_file);
+        if( ! m_file) return;
+        fclose(m_file);
         if(m_delete) delete_file(m_name);
         m_file = nullptr;
     }
+
+    ScopedTmpFile(ScopedTmpFile const&) = delete;
+    ScopedTmpFile& operator=(ScopedTmpFile const&) = delete;
+
+    ScopedTmpFile(ScopedTmpFile && that) { _move(&that); }
+    ScopedTmpFile& operator=(ScopedTmpFile && that) { _move(&that); return *this; }
+
+    void _move(ScopedTmpFile *that)
+    {
+        memcpy(m_name, that->m_name, sizeof(m_name));
+        memset(that->m_name, 0, sizeof(m_name));
+        m_file = that->m_file;
+        m_delete = that->m_delete;
+        that->m_file = nullptr;
+    }
+
+public:
 
     ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
     {
