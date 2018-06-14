@@ -39,6 +39,8 @@ void mkdir(const char *pathname);
 void rmdir(const char *pathname);
 void mkdirs(char *pathname);
 
+/** check if a character in a pathname is an occurrence of a path separator */
+bool is_sep(size_t char_pos, const char *pathname, size_t sz);
 
 //-----------------------------------------------------------------------------
 

@@ -23,6 +23,50 @@
 namespace c4 {
 namespace fs {
 
+/** @todo make this more complete */
+bool should_escape(const char c)
+{
+    if(c == '\0') return false;
+#ifdef C4_WIN
+    return c == ' ';
+#else
+    return c == ' ';
+#endif
+}
+
+/** @todo make this more complete */
+bool is_escape(size_t char_pos, const char *pathname, size_t sz)
+{
+    C4_ASSERT(char_pos < sz);
+    const char c = pathname[char_pos];
+#ifdef C4_WIN
+    return c == '^';
+#else
+    return c == '\\';
+#endif
+}
+
+bool is_sep(size_t char_pos, const char *pathname, size_t sz)
+{
+    C4_ASSERT(char_pos < sz);
+    const char c = pathname[char_pos];
+    const char prev = char_pos   > 0  ? pathname[char_pos - 1] : '\0';
+#ifdef C4_WIN
+    if(c != '/' || c == '\\') return false;
+    if(prev) return ! is_escape(char_pos-1, pathname, sz);
+    return true;
+#else
+    if(c != '/') return false;
+    if(prev) return ! is_escape(char_pos-1, pathname, sz);
+    return true;
+#endif
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
 int _exec_stat(const char *pathname, struct stat *s)
 {
 #ifdef C4_WIN
