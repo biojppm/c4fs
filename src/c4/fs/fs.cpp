@@ -312,12 +312,13 @@ int walk(const char *pathname, PathVisitor fn, void *user_data)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz)
+const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz, char subchar)
 {
+    const char lookup[3] = {subchar, subchar, '\0'};
     c4::csubstr fmt = to_csubstr(fmt_);
     c4::substr buf(buf_, fmt.len+1);
     C4_CHECK(bufsz > fmt.len);
-    C4_CHECK(fmt.find("XX") != csubstr::npos);
+    C4_CHECK(fmt.find(lookup) != csubstr::npos);
     memcpy(buf_, fmt.str, fmt.len);
     buf_[fmt.len] = '\0';
 
@@ -326,7 +327,7 @@ const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz)
     std::uniform_int_distribution<int> rand_dist(0, 255); // N4659 29.6.1.1 [rand.req.genl]/1e requires one of short, int, long, long long, unsigned short, unsigned int, unsigned long, or unsigned long long
 
     size_t pos = 0;
-    while((pos = buf.find("XX", pos)) != csubstr::npos)
+    while((pos = buf.find(lookup, pos)) != csubstr::npos)
     {
         int num = rand_dist(rand_eng);
         buf[pos++] = hexchars[ num       & 0xf];

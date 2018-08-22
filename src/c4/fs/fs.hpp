@@ -46,17 +46,23 @@ bool is_sep(size_t char_pos, const char *pathname, size_t sz);
 
 /** create a temporary name from a format. The format is scanned for
  * appearances of "XX"; each appearance of "XX" will be substituted by
- * an hexadecimal byte (ie 00...ff). */
-const char * tmpnam(const char *fmt, char *buf, size_t bufsz);
+ * an hexadecimal byte (ie 00...ff).
+ * @param subchar the character used to form the pattern to be substituted.
+ *        Eg, with subchar=='?', the pattern to be substituted will be "??".
+ */
+const char * tmpnam(const char *fmt, char *buf, size_t bufsz, char subchar='X');
 
 /** create a temporary name from a format. The format is scanned for
  * appearances of "XX"; each appearance of "XX" will be substituted by
- * an hexadecimal byte (ie 00...ff). */
+ * an hexadecimal byte (ie 00...ff).
+ * @param subchar the character used to form the pattern to be substituted.
+ *        Eg, with subchar=='?', the pattern to be substituted will be "??".
+ */
 template< class CharContainer >
-const char * tmpnam(const char *fmt, CharContainer *buf)
+const char * tmpnam(const char *fmt, CharContainer *buf, char subchar='X')
 {
     buf->resize(strlen(fmt) + 1);
-    return tmpnam(fmt, (*buf)[0], buf->size());
+    return tmpnam(fmt, (*buf)[0], buf->size(), subchar);
 }
 
 
