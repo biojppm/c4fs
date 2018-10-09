@@ -81,8 +81,8 @@ inline uint64_t atime(const char *pathname) { return times(pathname).access; }
 
 //-----------------------------------------------------------------------------
 
-/** get the current working directory. return null if the buffer is smaller
- * than the required size */
+/** get the current working directory. return null if the given buffer
+ * is smaller than the required size */
 char *cwd(char *buf, size_t sz);
 
 template< class CharContainer >
