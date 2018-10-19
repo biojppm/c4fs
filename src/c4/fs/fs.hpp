@@ -136,7 +136,8 @@ size_t file_get_contents(const char *filename, CharContainer *v)
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
     long sz = ::ftell(fp);
-    v->resize((size_t)sz);
+    using size_type = typename CharContainer::size_type;
+    v->resize(static_cast<size_type>(sz));
     if(sz)
     {
         ::rewind(fp);
