@@ -349,7 +349,11 @@ size_t file_get_contents(const char *filename, char *buf, size_t sz, const char*
     ::fseek(fp, 0, SEEK_END);
     size_t fs = ::ftell(fp);
     ::rewind(fp);
-    if(fs < sz) ::fread(buf, 1, fs, fp);
+    if(fs < sz)
+    {
+        size_t ret = ::fread(buf, 1, fs, fp);
+        C4_CHECK(ret == fs);
+    }
     ::fclose(fp);
     return fs;
 }

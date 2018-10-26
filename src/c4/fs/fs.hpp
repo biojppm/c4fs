@@ -141,7 +141,8 @@ size_t file_get_contents(const char *filename, CharContainer *v)
     if(sz)
     {
         ::rewind(fp);
-        ::fread(&(*v)[0], 1, v->size(), fp);
+        size_t ret = ::fread(&(*v)[0], 1, v->size(), fp);
+        C4_CHECK(ret == sz);
     }
     ::fclose(fp);
     return v->size();
