@@ -85,7 +85,7 @@ inline uint64_t atime(const char *pathname) { return times(pathname).access; }
  * is smaller than the required size */
 char *cwd(char *buf, size_t sz);
 
-template< class CharContainer >
+template<class CharContainer>
 char *cwd(CharContainer *v)
 {
     if(v->empty()) v->resize(16);
@@ -129,7 +129,7 @@ int walk(const char *pathname, PathVisitor fn, void *user_data=nullptr);
 size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
 void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
 
-template <class CharContainer>
+template<class CharContainer>
 size_t file_get_contents(const char *filename, CharContainer *v)
 {
     ::FILE *fp = ::fopen(filename, "rb");
@@ -147,9 +147,16 @@ size_t file_get_contents(const char *filename, CharContainer *v)
     ::fclose(fp);
     return v->size();
 }
+template<class CharContainer>
+CharContainer file_get_contents(const char *filename)
+{
+    CharContainer cc;
+    file_get_contents(filename, &cc);
+    return cc;
+}
 
 
-template <class CharContainer>
+template<class CharContainer>
 inline void file_put_contents(const char *filename, CharContainer const& v, const char* access="wb")
 {
     file_put_contents(filename, &v[0], v.size(), access);
