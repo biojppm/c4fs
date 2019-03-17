@@ -1,7 +1,6 @@
 #include "c4/fs/fs.hpp"
 
 #include <c4/substr.hpp>
-#include <c4/to_str.hpp>
 
 #ifdef C4_POSIX
 #include <unistd.h>

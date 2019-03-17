@@ -15,7 +15,7 @@ c4_require_module(c4fs c4core
     SUBDIRECTORY ${C4FS_EXT_DIR}/c4core)
 
 c4_add_library(C4FS c4fs
-    SOURCES c4/fs/fs.hpp c4/fs/fs.cpp
+    SOURCES ${C4FS_SRC_DIR}/c4/fs/fs.hpp ${C4FS_SRC_DIR}/c4/fs/fs.cpp
     LIBS c4core
     INC_DIRS ${C4FS_SRC_DIR}
 )
