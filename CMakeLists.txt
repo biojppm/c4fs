@@ -1,14 +1,24 @@
 cmake_minimum_required(VERSION 3.2)
 project(c4fs)
 
-include(./cmake/c4Project.cmake)
+include(./ext/c4core/cmake/c4Project.cmake)
 
-c4_declare_project(C4FS)
+c4_declare_project(c4fs
+    DESC "C++ filesystem utilities"
+    AUTHOR "Joao Paulo Magalhaes <dev@jpmag.me>"
+    MAJOR 0 MINOR 1 RELEASE 0)
 
-set(C4FS_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(C4FS_EXT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern)
+set(C4FS_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(C4FS_EXT_DIR ${CMAKE_CURRENT_LIST_DIR}/ext)
 
-add_subdirectory(src)
+c4_require_module(c4fs c4core
+    SUBDIRECTORY ${C4FS_EXT_DIR}/c4core)
+
+c4_add_library(C4FS c4fs
+    SOURCES ${C4FS_SRC_DIR}/c4/fs/fs.hpp ${C4FS_SRC_DIR}/c4/fs/fs.cpp
+    LIBS c4core
+    INC_DIRS ${C4FS_SRC_DIR}
+)
 
 if(C4FS_BUILD_TESTS)
     enable_testing() # this must be done here (and not inside the test dir)
