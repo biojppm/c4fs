@@ -314,7 +314,7 @@ int walk(const char *pathname, PathVisitor fn, void *user_data)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-const char* tmpnam(const char *fmt_, char *buf_, size_t bufsz, char subchar)
+const char* tmpnam(char *buf_, size_t bufsz, const char *fmt_, char subchar)
 {
     const char lookup[3] = {subchar, subchar, '\0'};
     c4::csubstr fmt = to_csubstr(fmt_);

@@ -44,13 +44,8 @@ bool is_sep(size_t char_pos, const char *pathname, size_t sz);
 
 //-----------------------------------------------------------------------------
 
-/** create a temporary name from a format. The format is scanned for
- * appearances of "XX"; each appearance of "XX" will be substituted by
- * an hexadecimal byte (ie 00...ff).
- * @param subchar the character used to form the pattern to be substituted.
- *        Eg, with subchar=='?', the pattern to be substituted will be "??".
- */
-const char * tmpnam(const char *fmt, char *buf, size_t bufsz, char subchar='X');
+constexpr const char default_tmppat[] = "_c4fs_tmpname_XXXXXXXX.tmp";
+constexpr const char default_tmpchar = 'X';
 
 /** create a temporary name from a format. The format is scanned for
  * appearances of "XX"; each appearance of "XX" will be substituted by
@@ -58,11 +53,26 @@ const char * tmpnam(const char *fmt, char *buf, size_t bufsz, char subchar='X');
  * @param subchar the character used to form the pattern to be substituted.
  *        Eg, with subchar=='?', the pattern to be substituted will be "??".
  */
-template< class CharContainer >
-const char * tmpnam(const char *fmt, CharContainer *buf, char subchar='X')
+const char * tmpnam(char *buf, size_t bufsz, const char *fmt=default_tmppat, char subchar=default_tmpchar);
+
+/** create a temporary name from a format. The format is scanned for
+ * appearances of "XX"; each appearance of "XX" will be substituted by
+ * an hexadecimal byte (ie 00...ff).
+ * @param subchar the character used to form the pattern to be substituted.
+ *        Eg, with subchar=='?', the pattern to be substituted will be "??".
+ */
+template<class CharContainer>
+const char * tmpnam(CharContainer *buf, const char *fmt=default_tmppat, char subchar=default_tmpchar)
 {
     buf->resize(strlen(fmt) + 1);
-    return tmpnam(fmt, (*buf)[0], buf->size(), subchar);
+    return tmpnam(&(*buf)[0], buf->size(), fmt, subchar);
+}
+template<class CharContainer>
+CharContainer tmpnam(const char *fmt=default_tmppat, char subchar=default_tmpchar)
+{
+    CharContainer c;
+    tmpnam(&c, fmt, subchar);
+    return c;
 }
 
 
@@ -126,8 +136,8 @@ int walk(const char *pathname, PathVisitor fn, void *user_data=nullptr);
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
 void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
+size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
 
 template<class CharContainer>
 size_t file_get_contents(const char *filename, CharContainer *v)
@@ -182,9 +192,9 @@ public:
 
     ~ScopedTmpFile()
     {
+        if(m_delete) delete_file(m_name);
         if( ! m_file) return;
         fclose(m_file);
-        if(m_delete) delete_file(m_name);
         m_file = nullptr;
     }
 
@@ -207,8 +217,8 @@ public:
 
     ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
     {
-        C4_CHECK(strlen(name_pattern) <= sizeof(m_name));
-        tmpnam(name_pattern, m_name, sizeof(m_name));
+        C4_CHECK(strlen(name_pattern) < sizeof(m_name));
+        tmpnam(m_name, sizeof(m_name), name_pattern);
         m_file = ::fopen(m_name, access);
         m_delete = delete_after_use;
     }
@@ -226,6 +236,8 @@ public:
     {
     }
 
+public:
+
     const char* full_path(char *buf, size_t sz) const
     {
         if(cwd(buf, sz) == nullptr) return nullptr;
@@ -237,7 +249,6 @@ public:
         buf[cwdlen + 1 + namelen] = '\0';
         return buf;
     }
-
     template <class CharContainer>
     const char* full_path(CharContainer *v) const
     {
@@ -249,6 +260,27 @@ public:
         v->resize(strlen(v->data()));
         return &(*v)[0];
     }
+    template<class CharContainer>
+    CharContainer full_path() const
+    {
+        CharContainer c;
+        full_path(&c);
+        return c;
+    }
+
+    template<class CharContainer>
+    void contents(CharContainer *cont) const
+    {
+        file_get_contents(m_name, cont);
+    }
+    template<class CharContainer>
+    CharContainer contents() const
+    {
+        CharContainer c;
+        file_get_contents(m_name, &c);
+        return c;
+    }
+
 };
 
 } // namespace fs
