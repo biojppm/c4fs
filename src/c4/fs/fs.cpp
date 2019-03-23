@@ -238,6 +238,8 @@ void delete_file(const char *filename)
 {
 #ifdef C4_POSIX
     ::unlink(filename);
+#elif defined(C4_WIN)
+    ::unlink(filename);
 #else
     C4_NOT_IMPLEMENTED();
 #endif
