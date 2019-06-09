@@ -344,6 +344,16 @@ const char* tmpnam(char *buf_, size_t bufsz, const char *fmt_, char subchar)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
+size_t file_size(const char *filename)
+{
+    ::FILE *fp = ::fopen(filename, "rb");
+    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    ::fseek(fp, 0, SEEK_END);
+    size_t fs = ::ftell(fp);
+    ::rewind(fp);
+    return fs;
+}
+
 size_t file_get_contents(const char *filename, char *buf, size_t sz, const char* access)
 {
     ::FILE *fp = ::fopen(filename, access);

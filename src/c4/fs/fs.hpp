@@ -136,6 +136,8 @@ int walk(const char *pathname, PathVisitor fn, void *user_data=nullptr);
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
+size_t file_size(const char *filename);
+
 void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
 size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
 
