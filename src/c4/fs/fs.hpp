@@ -217,7 +217,7 @@ public:
 
 public:
 
-    ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
+    explicit ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
     {
         C4_CHECK(strlen(name_pattern) < sizeof(m_name));
         tmpnam(m_name, sizeof(m_name), name_pattern);
@@ -225,7 +225,7 @@ public:
         m_delete = delete_after_use;
     }
 
-    ScopedTmpFile(const char* contents, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
+    explicit ScopedTmpFile(const char* contents, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
         : ScopedTmpFile(name_pattern, access, delete_after_use)
     {
         ::fwrite(contents, 1, sz, m_file);
@@ -233,8 +233,8 @@ public:
     }
 
     template <class CharContainer>
-    ScopedTmpFile(CharContainer const& contents, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb", bool delete_after_use=true)
-        : ScopedTmpFile(&contents[0], contents.size(), name_pattern, access, delete_after_use)
+    explicit ScopedTmpFile(CharContainer const& contents, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb", bool delete_after_use=true)
+        : ScopedTmpFile(contents.data(), contents.size(), name_pattern, access, delete_after_use)
     {
     }
 
