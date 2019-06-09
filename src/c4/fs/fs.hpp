@@ -200,11 +200,11 @@ public:
         m_file = nullptr;
     }
 
-    ScopedTmpFile(ScopedTmpFile const&) = delete;
-    ScopedTmpFile& operator=(ScopedTmpFile const&) = delete;
+    ScopedTmpFile(ScopedTmpFile const&) noexcept = delete;
+    ScopedTmpFile& operator=(ScopedTmpFile const&) noexcept = delete;
 
-    ScopedTmpFile(ScopedTmpFile && that) { _move(&that); }
-    ScopedTmpFile& operator=(ScopedTmpFile && that) { _move(&that); return *this; }
+    ScopedTmpFile(ScopedTmpFile && that) noexcept { _move(&that); }
+    ScopedTmpFile& operator=(ScopedTmpFile && that) noexcept { _move(&that); return *this; }
 
     void _move(ScopedTmpFile *that)
     {
