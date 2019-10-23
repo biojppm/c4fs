@@ -11,7 +11,7 @@ struct ScopedTestFile
     operator const char* () const { return m_name; }
     ScopedTestFile(const char* access="wb") : m_name()
     {
-        tmpnam("scoped_file.XXXXXX.test", m_name, sizeof(m_name));
+        tmpnam(m_name, sizeof(m_name), "scoped_file.XXXXXX.test");
         ::FILE *f = fopen(m_name, access);
         fclose(f);
     }
@@ -27,7 +27,7 @@ struct ScopedTestDir
     operator const char* () const { return m_name; }
     ScopedTestDir() : m_name()
     {
-        tmpnam("scoped_dir.XXXXXX.test", m_name, sizeof(m_name));
+        tmpnam(m_name, sizeof(m_name), "scoped_dir.XXXXXX.test");
         c4::fs::mkdir(m_name);
     }
     ~ScopedTestDir()
@@ -161,7 +161,7 @@ TEST(file_put_contents, basic)
 {
     char filename[32];
 
-    tmpnam("c4fpc.XXXXXX.test", filename, sizeof(filename));
+    tmpnam(filename, sizeof(filename), "c4fpc.XXXXXX.test");
 
     file_put_contents(filename, test_contents, strlen(test_contents));
 
