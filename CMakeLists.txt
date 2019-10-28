@@ -3,7 +3,7 @@ project(c4fs)
 
 include(./ext/c4core/cmake/c4Project.cmake)
 
-c4_declare_project(c4fs
+c4_declare_project(c4fs STANDALONE
     DESC "C++ filesystem utilities"
     AUTHOR "Joao Paulo Magalhaes <dev@jpmag.me>"
     MAJOR 0 MINOR 1 RELEASE 0)
@@ -11,7 +11,7 @@ c4_declare_project(c4fs
 set(C4FS_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(C4FS_EXT_DIR ${CMAKE_CURRENT_LIST_DIR}/ext)
 
-c4fs_require_module(c4core
+c4fs_require_subproject(c4core
     SUBDIRECTORY ${C4FS_EXT_DIR}/c4core)
 
 c4fs_add_library(c4fs
