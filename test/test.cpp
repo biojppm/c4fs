@@ -2,6 +2,13 @@
 #include <gtest/gtest.h>
 #include <stdlib.h>
 
+#ifdef _MSC_VER
+#   pragma warning(push)
+#   pragma warning(disable : 4996) // 'strncpy', fopen, etc: This function or variable may be unsafe
+#elif defined(__clang__)
+#elif defined(__GNUC__)
+#endif
+
 namespace c4 {
 namespace fs {
 
@@ -196,3 +203,9 @@ TEST(file_get_contents, std_string)
 
 } // namespace fs
 } // namespace c4
+
+#ifdef _MSC_VER
+#   pragma warning(pop)
+#elif defined(__clang__)
+#elif defined(__GNUC__)
+#endif

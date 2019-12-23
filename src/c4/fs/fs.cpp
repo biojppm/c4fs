@@ -37,6 +37,7 @@ bool should_escape(const char c)
 /** @todo make this more complete */
 bool is_escape(size_t char_pos, const char *pathname, size_t sz)
 {
+    C4_UNUSED(sz);
     C4_ASSERT(char_pos < sz);
     const char c = pathname[char_pos];
 #ifdef C4_WIN
@@ -73,7 +74,8 @@ int _exec_stat(const char *pathname, struct stat *s)
     /* If path contains the location of a directory, it cannot contain
      * a trailing backslash. If it does, -1 will be returned and errno
      * will be set to ENOENT. */
-    size_t len = strlen(pathname);
+    auto len = strlen(pathname);
+    C4_UNUSED(len);
     C4_ASSERT(len > 0);
     C4_ASSERT(pathname[len] == '\0');
     C4_ASSERT(pathname[len-1] != '/' && pathname[len-1] != '\\');
