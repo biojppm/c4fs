@@ -11,10 +11,10 @@ c4_declare_project(c4fs STANDALONE
 set(C4FS_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(C4FS_EXT_DIR ${CMAKE_CURRENT_LIST_DIR}/ext)
 
-c4fs_require_subproject(c4core
+c4_require_subproject(c4core
     SUBDIRECTORY ${C4FS_EXT_DIR}/c4core)
 
-c4fs_add_library(c4fs
+c4_add_library(c4fs
     SOURCES c4/fs/fs.hpp c4/fs/fs.cpp
     SOURCE_ROOT ${C4FS_SRC_DIR}
     LIBS c4core
