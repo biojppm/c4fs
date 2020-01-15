@@ -51,7 +51,7 @@ bool is_sep(size_t char_pos, const char *pathname, size_t sz)
 {
     C4_ASSERT(char_pos < sz);
     const char c = pathname[char_pos];
-    const char prev = char_pos   > 0  ? pathname[char_pos - 1] : '\0';
+    const char prev = char_pos > 0 ? pathname[char_pos - 1] : '\0';
 #ifdef C4_WIN
     if(c != '/' || c == '\\') return false;
     if(prev) return ! is_escape(char_pos-1, pathname, sz);
