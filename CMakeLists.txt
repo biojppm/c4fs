@@ -18,8 +18,12 @@ c4_add_library(c4fs
     SOURCES c4/fs/fs.hpp c4/fs/fs.cpp
     SOURCE_ROOT ${C4FS_SRC_DIR}
     LIBS c4core
-    INC_DIRS ${C4FS_SRC_DIR}
+    INC_DIRS
+       $<BUILD_INTERFACE:${C4FS_SRC_DIR}> $<INSTALL_INTERFACE:include>
 )
+
+c4_install_target(c4fs)
+c4_install_exports()
 
 if(C4FS_BUILD_TESTS)
     enable_testing() # this must be done here (and not inside the test dir)
