@@ -5,7 +5,7 @@ function(c4fs_add_test name)
         SOURCES ${ARGN} main.cpp
         INC_DIRS ${CMAKE_CURRENT_LIST_DIR}
         LIBS c4fs gtest
-        FOLDER c4fs-test)
+        FOLDER test)
     c4_add_test(c4fs-test-${name} ON)
 endfunction(c4fs_add_test)
 

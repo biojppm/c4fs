@@ -25,12 +25,5 @@ c4_add_library(c4fs
 c4_install_target(c4fs)
 c4_install_exports()
 
-if(C4FS_BUILD_TESTS)
-    enable_testing() # this must be done here (and not inside the test dir)
-                     # so that the test targets are available at the top level
-    add_subdirectory(test)
-endif()
+c4_add_dev_targets()
 
-if(C4FS_BUILD_BENCHMARKS)
-    add_subdirectory(bm)
-endif()
