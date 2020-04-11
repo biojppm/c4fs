@@ -63,6 +63,20 @@ bool is_sep(size_t char_pos, const char *pathname, size_t sz)
 #endif
 }
 
+bool to_unix_sep(char *pathname, size_t sz)
+{
+    bool changes = false;
+    for(size_t i = 0; i < sz; ++i)
+    {
+        if(is_sep(i, pathname, sz))
+        {
+            pathname[i] = '/';
+            changes = true;
+        }
+    }
+    return changes;
+}
+
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
