@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <random>
 
+
 namespace c4 {
 namespace fs {
 
@@ -215,16 +216,26 @@ void mkdir(const char *dirname)
 
 void mkdirs(char *pathname)
 {
+    size_t sz = strlen(pathname);
     // add 1 to len because we know that the buffer has a null terminator
-    c4::substr dir, buf = {pathname, 1 + strlen(pathname)};
+    c4::substr dir, buf = {pathname, 1 + sz};
     size_t start_pos = 0;
     while(buf.next_split('/', &start_pos, &dir))
     {
-        char ctmp = buf.str[start_pos];
-        buf.str[start_pos] = '\0';
-        _exec_mkdir(buf.str);
-        buf.str[start_pos] = ctmp;
+        if(dir.empty()) continue;
+        if(start_pos < sz)
+        {
+            char ctmp = buf.str[start_pos];
+            buf.str[start_pos] = '\0';
+            _exec_mkdir(buf.str);
+            buf.str[start_pos] = ctmp;
+        }
+        else
+        {
+            _exec_mkdir(buf.str);
+        }
     }
+    C4_CHECK_MSG(dir_exists(pathname), "dir=%s", pathname);
 }
 
 

@@ -31,9 +31,12 @@ typedef enum {
 
 bool path_exists(const char *pathname);
 PathType_e path_type(const char *pathname);
-
 inline bool is_file(const char *pathname) { return path_type(pathname) == REGFILE; }
 inline bool is_dir(const char *pathname) { return path_type(pathname) == DIR; }
+inline bool dir_exists(const char *pathname)
+{
+    return path_exists(pathname) && is_dir(pathname);
+}
 
 void mkdir(const char *pathname);
 void rmdir(const char *pathname);
@@ -49,26 +52,39 @@ bool to_unix_sep(char *pathname, size_t sz);
 constexpr const char default_tmppat[] = "_c4fs_tmpname_XXXXXXXX.tmp";
 constexpr const char default_tmpchar = 'X';
 
-/** create a temporary name from a format. The format is scanned for
+/** @name tmpnam
+ * create a temporary name from a format. The format is scanned for
  * appearances of "XX"; each appearance of "XX" will be substituted by
  * an hexadecimal byte (ie 00...ff).
+ *
+ * @param fmt the format string
  * @param subchar the character used to form the pattern to be substituted.
  *        Eg, with subchar=='?', the pattern to be substituted will be "??".
+ * @overload tmpnam
  */
+
+//@{
+/** create a temporary name from a format.
+ * output to a string, never writing with at most @p bufsz
+ * @param the buffer - must be larger than @p fmt
+ * @param the size of the buffer - must be higher than strlen(fmt) */
 const char * tmpnam(char *buf, size_t bufsz, const char *fmt=default_tmppat, char subchar=default_tmpchar);
 
-/** create a temporary name from a format. The format is scanned for
- * appearances of "XX"; each appearance of "XX" will be substituted by
- * an hexadecimal byte (ie 00...ff).
- * @param subchar the character used to form the pattern to be substituted.
- *        Eg, with subchar=='?', the pattern to be substituted will be "??".
- */
+/** create a temporary name from a format.
+ * a convenience wrapper for use with containers */
 template<class CharContainer>
 const char * tmpnam(CharContainer *buf, const char *fmt=default_tmppat, char subchar=default_tmpchar)
 {
-    buf->resize(strlen(fmt) + 1);
-    return tmpnam(&(*buf)[0], buf->size(), fmt, subchar);
+    size_t fmtsz = strlen(fmt);
+    buf->resize(fmtsz + 1);
+    tmpnam(&(*buf)[0], buf->size(), fmt, subchar);
+    (*buf)[fmtsz] = '\0';
+    buf->resize(fmtsz);
+    return &(*buf)[0];
 }
+
+/** create a temporary name from a format.
+ * a convenience wrapper for use with containers */
 template<class CharContainer>
 CharContainer tmpnam(const char *fmt=default_tmppat, char subchar=default_tmpchar)
 {
@@ -76,6 +92,7 @@ CharContainer tmpnam(const char *fmt=default_tmppat, char subchar=default_tmpcha
     tmpnam(&c, fmt, subchar);
     return c;
 }
+//@}
 
 
 //-----------------------------------------------------------------------------
@@ -105,8 +122,16 @@ char *cwd(CharContainer *v)
     {
         v->resize(v->size() * 2);
     }
-    v->resize(strlen(v->data()));
+    v->resize(strlen(&(*v)[0]));
     return &(*v)[0];
+}
+
+template<class CharContainer>
+CharContainer cwd()
+{
+    CharContainer c(32);
+    cwd(&c);
+    return c;
 }
 
 
@@ -173,7 +198,7 @@ CharContainer file_get_contents(const char *filename)
 template<class CharContainer>
 inline void file_put_contents(const char *filename, CharContainer const& v, const char* access="wb")
 {
-    file_put_contents(filename, &v[0], v.size(), access);
+    file_put_contents(filename, v.empty() ? "" : &v[0], v.size(), access);
 }
 
 
@@ -261,7 +286,7 @@ public:
         {
             v->resize(v->size() * 2);
         }
-        v->resize(strlen(v->data()));
+        v->resize(strlen(&(*v)[0]));
         return &(*v)[0];
     }
     template<class CharContainer>
