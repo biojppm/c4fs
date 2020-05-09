@@ -129,7 +129,7 @@ char *cwd(CharContainer *v)
 template<class CharContainer>
 CharContainer cwd()
 {
-    CharContainer c(32);
+    CharContainer c;
     cwd(&c);
     return c;
 }
