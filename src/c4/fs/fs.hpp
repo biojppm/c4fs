@@ -130,6 +130,7 @@ template<class CharContainer>
 CharContainer cwd()
 {
     CharContainer c;
+    c.resize(32);
     cwd(&c);
     return c;
 }
