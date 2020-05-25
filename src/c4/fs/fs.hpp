@@ -5,6 +5,7 @@
 #include <c4/error.hpp>
 #include <stdio.h>
 #include <string.h>
+#include <c4/fs/export.hpp>
 
 #ifdef C4_POSIX
 typedef struct _ftsent FTSENT;

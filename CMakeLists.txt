@@ -15,7 +15,7 @@ c4_require_subproject(c4core
     SUBDIRECTORY ${C4FS_EXT_DIR}/c4core)
 
 c4_add_library(c4fs
-    SOURCES c4/fs/fs.hpp c4/fs/fs.cpp
+    SOURCES c4/fs/export.hpp c4/fs/fs.hpp c4/fs/fs.cpp
     SOURCE_ROOT ${C4FS_SRC_DIR}
     LIBS c4core
     INC_DIRS

@@ -17,6 +17,7 @@ CMakeLists.txt.user
 build/
 install/
 .python-version
+.ccls-cache/
 
 # test files
 /Testing/
