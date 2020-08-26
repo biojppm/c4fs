@@ -155,12 +155,13 @@ TEST(ScopedTmpFile, c_str)
     FILE *rfile = fopen(wfile.m_name, "rb");
 
     fseek(rfile, 0, SEEK_END);
-    size_t sz = ftell(rfile);
+    size_t sz = static_cast<size_t>(ftell(rfile));
     rewind(rfile);
     EXPECT_EQ(sizeof(test_contents), sz+1);
 
     char cmp[2*sizeof(test_contents)] = {0};
-    fread(cmp, 1, sz, rfile);
+    size_t ret = fread(cmp, 1, sz, rfile);
+    C4_UNUSED(ret);
     EXPECT_STREQ(cmp, test_contents);
 }
 
@@ -175,11 +176,12 @@ TEST(file_put_contents, basic)
     auto rfile = fopen(filename, "rb");
 
     fseek(rfile, 0, SEEK_END);
-    size_t sz = ftell(rfile);
+    size_t sz = static_cast<size_t>(ftell(rfile));
     rewind(rfile);
 
     char cmp[2*sizeof(test_contents)] = {0};
-    fread(cmp, 1, sz, rfile);
+    size_t ret = fread(cmp, 1, sz, rfile);
+    C4_UNUSED(ret);
     EXPECT_STREQ(cmp, test_contents);
 }
 

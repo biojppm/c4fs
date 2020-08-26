@@ -172,9 +172,10 @@ path_times times(const char *pathname)
 #if defined(C4_POSIX) || defined(C4_WIN)
     struct stat s;
     _exec_stat(pathname, &s);
-    t.creation = s.st_ctime;
-    t.modification = s.st_mtime;
-    t.access = s.st_atime;
+    using ttype = decltype(t.creation);
+    t.creation = static_cast<ttype>(s.st_ctime);
+    t.modification = static_cast<ttype>(s.st_mtime);
+    t.access = static_cast<ttype>(s.st_atime);
 #else
     C4_NOT_IMPLEMENTED();
 #endif
@@ -376,7 +377,7 @@ size_t file_size(const char *filename)
     ::FILE *fp = ::fopen(filename, "rb");
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
-    size_t fs = ::ftell(fp);
+    size_t fs = static_cast<size_t>(::ftell(fp));
     ::rewind(fp);
     return fs;
 }
@@ -386,7 +387,7 @@ size_t file_get_contents(const char *filename, char *buf, size_t sz, const char*
     ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
-    size_t fs = ::ftell(fp);
+    size_t fs = static_cast<size_t>(::ftell(fp));
     ::rewind(fp);
     if(fs <= sz)
     {
