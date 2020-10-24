@@ -1,12 +1,10 @@
-cmake_minimum_required(VERSION 3.2)
-project(c4fs)
-
+cmake_minimum_required(VERSION 3.12)
 include(./ext/c4core/cmake/c4Project.cmake)
-
-c4_declare_project(c4fs STANDALONE
-    DESC "C++ filesystem utilities"
-    AUTHOR "Joao Paulo Magalhaes <dev@jpmag.me>"
-    MAJOR 0 MINOR 1 RELEASE 0)
+project(c4fs
+    DESCRIPTION "C++ filesystem utilities"
+    HOMEPAGE_URL "https://github.com/biojppm/c4fs/")
+c4_project(VERSION 0.0.1 STANDALONE
+    AUTHOR "Joao Paulo Magalhaes <dev@jpmag.me>")
 
 set(C4FS_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(C4FS_EXT_DIR ${CMAKE_CURRENT_LIST_DIR}/ext)
