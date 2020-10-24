@@ -3,7 +3,7 @@
 #include <c4/substr.hpp>
 #include <c4/charconv.hpp>
 
-#ifdef C4_POSIX
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -95,7 +95,7 @@ int _exec_stat(const char *pathname, struct stat *s)
     C4_ASSERT(pathname[len] == '\0');
     C4_ASSERT(pathname[len-1] != '/' && pathname[len-1] != '\\');
     return ::stat(pathname, s);
-#elif defined(C4_POSIX)
+#elif defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return ::stat(pathname, s);
 #else
     C4_NOT_IMPLEMENTED();
@@ -105,7 +105,7 @@ int _exec_stat(const char *pathname, struct stat *s)
 
 PathType_e _path_type(struct stat *C4_RESTRICT s)
 {
-#if defined(C4_POSIX) || defined(C4_WIN)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
 #   if defined(C4_WIN)
 #      define _c4is(what) (s->st_mode & _S_IF##what)
 #   else
@@ -148,7 +148,7 @@ PathType_e _path_type(struct stat *C4_RESTRICT s)
 
 bool path_exists(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
     struct stat s;
     return _exec_stat(pathname, &s) == 0;
 #else
@@ -169,7 +169,7 @@ PathType_e path_type(const char *pathname)
 path_times times(const char *pathname)
 {
     path_times t;
-#if defined(C4_POSIX) || defined(C4_WIN)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
     struct stat s;
     _exec_stat(pathname, &s);
     using ttype = decltype(t.creation);
@@ -189,7 +189,7 @@ path_times times(const char *pathname)
 
 void rmdir(const char *dirname)
 {
-#if defined(C4_POSIX)
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     ::rmdir(dirname);
 #elif defined(C4_WIN) || defined(C4_XBOX)
     ::_rmdir(dirname);
@@ -200,7 +200,7 @@ void rmdir(const char *dirname)
 
 int _exec_mkdir(const char *dirname)
 {
-#if defined(C4_POSIX)
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return ::mkdir(dirname, 0755);
 #elif defined(C4_WIN) || defined(C4_XBOX)
     return ::_mkdir(dirname);
@@ -247,7 +247,7 @@ void mkdirs(char *pathname)
 char *cwd(char *buf, size_t sz)
 {
     C4_ASSERT(sz > 0);
-#if defined(C4_POSIX)
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return ::getcwd(buf, sz);
 #elif defined(C4_WIN)
     return ::getcwd(buf, (int)sz);
@@ -264,7 +264,7 @@ char *cwd(char *buf, size_t sz)
 
 void delete_file(const char *filename)
 {
-#ifdef C4_POSIX
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     ::unlink(filename);
 #elif defined(C4_WIN)
     ::unlink(filename);
@@ -275,7 +275,7 @@ void delete_file(const char *filename)
 
 void delete_path(const char *pathname, bool recursive)
 {
-#ifdef C4_POSIX
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     if( ! recursive)
     {
         ::remove(pathname);
@@ -311,7 +311,7 @@ int walk(const char *pathname, PathVisitor fn, void *user_data)
 {
     C4_CHECK(is_dir(pathname));
 
-#ifdef C4_POSIX
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
     const char* argv[] = {pathname, nullptr};
     ::FTS *root = ::fts_open((char *const *)argv, fts_options, nullptr);

@@ -7,7 +7,7 @@
 #include <string.h>
 #include <c4/fs/export.hpp>
 
-#ifdef C4_POSIX
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
 typedef struct _ftsent FTSENT;
 #endif
 
@@ -151,7 +151,7 @@ struct VisitedPath
     const char  *name;
     PathType_e   type;
     void        *user_data;
-#ifdef C4_POSIX
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     FTSENT      *node;
 #endif
 };
