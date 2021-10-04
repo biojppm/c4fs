@@ -1,14 +1,15 @@
 #ifndef _c4_FS_HPP_
 #define _c4_FS_HPP_
 
-#include <c4/platform.hpp>
 #include <c4/error.hpp>
+#include <c4/fs/export.hpp>
 #include <stdio.h>
 #include <string.h>
-#include <c4/fs/export.hpp>
 
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-typedef struct _ftsent FTSENT;
+struct dirent;
+struct stat;
+struct FTW;
 #endif
 
 #include "c4/c4_push.hpp"
@@ -27,31 +28,95 @@ typedef enum {
     INVALID
 } PathType_e;
 
-
-//-----------------------------------------------------------------------------
-
-bool path_exists(const char *pathname);
 PathType_e path_type(const char *pathname);
+
 inline bool is_file(const char *pathname) { return path_type(pathname) == REGFILE; }
 inline bool is_dir(const char *pathname) { return path_type(pathname) == DIR; }
-inline bool dir_exists(const char *pathname)
-{
-    return path_exists(pathname) && is_dir(pathname);
-}
 
-void mkdir(const char *pathname);
-void rmdir(const char *pathname);
-void mkdirs(char *pathname);
+/** true if a file or directory exists */
+bool path_exists(const char *pathname);
+/** true if the path exists and is a file */
+bool file_exists(const char *pathname);
+/** true if the path exists and is a directory */
+bool dir_exists(const char *pathname);
+
+/** convert a path to unix right-slash separators */
+bool to_unix_sep(char *pathname, size_t sz);
 
 /** check if a character in a pathname is an occurrence of a path separator */
 bool is_sep(size_t char_pos, const char *pathname, size_t sz);
-bool to_unix_sep(char *pathname, size_t sz);
 
 
 //-----------------------------------------------------------------------------
 
-constexpr const char default_tmppat[] = "_c4fs_tmpname_XXXXXXXX.tmp";
-constexpr const char default_tmpchar = 'X';
+/** @name path times */
+
+/** @{ */
+
+struct path_times
+{
+    uint64_t creation, modification, access;
+};
+
+path_times times(const char *pathname);
+/** get the creation time */
+uint64_t ctime(const char *pathname);
+/** get the modification time */
+uint64_t mtime(const char *pathname);
+/** get the access time */
+uint64_t atime(const char *pathname);
+
+/** @} */
+
+
+//-----------------------------------------------------------------------------
+
+/** @name creation and deletion */
+
+/** @{ */
+void mkdirs(char *pathname);
+void mkdir(const char *pathname);
+void rmdir(const char *pathname);
+
+int rmfile(const char *filename);
+int rmtree(const char *pathname);
+
+/** @} */
+
+
+//-----------------------------------------------------------------------------
+
+/** @name working directory */
+
+/** @{ */
+
+/** get the current working directory. return null if the given buffer
+ * is smaller than the required size */
+char *cwd(char *buf, size_t sz);
+
+template<class CharContainer>
+char *cwd(CharContainer *v)
+{
+    if(v->empty())
+        v->resize(32);
+    while(cwd(&(*v)[0], v->size()) == nullptr)
+        v->resize(v->size() * 2);
+    v->resize(strlen(&(*v)[0]));
+    return &(*v)[0];
+}
+
+template<class CharContainer>
+CharContainer cwd()
+{
+    CharContainer c;
+    cwd(&c);
+    return c;
+}
+
+/** @} */
+
+
+//-----------------------------------------------------------------------------
 
 /** @name tmpnam
  * create a temporary name from a format. The format is scanned for
@@ -64,9 +129,13 @@ constexpr const char default_tmpchar = 'X';
  * @overload tmpnam
  */
 
-//@{
+/** @{ */
+
+constexpr const char default_tmppat[] = "_c4fs_tmpname_XXXXXXXX.tmp";
+constexpr const char default_tmpchar = 'X';
+
 /** create a temporary name from a format.
- * output to a string, never writing with at most @p bufsz
+ * output to a string, never writing beyond @p bufsz
  * @param the buffer - must be larger than @p fmt
  * @param the size of the buffer - must be higher than strlen(fmt) */
 const char * tmpnam(char *buf, size_t bufsz, const char *fmt=default_tmppat, char subchar=default_tmpchar);
@@ -93,118 +162,97 @@ CharContainer tmpnam(const char *fmt=default_tmppat, char subchar=default_tmpcha
     tmpnam(&c, fmt, subchar);
     return c;
 }
-//@}
+
+/** @} */
 
 
 //-----------------------------------------------------------------------------
-
-struct path_times
-{
-    uint64_t creation, modification, access;
-};
-
-path_times times(const char *pathname);
-inline uint64_t ctime(const char *pathname) { return times(pathname).creation; }
-inline uint64_t mtime(const char *pathname) { return times(pathname).modification; }
-inline uint64_t atime(const char *pathname) { return times(pathname).access; }
-
-
+//-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-/** get the current working directory. return null if the given buffer
- * is smaller than the required size */
-char *cwd(char *buf, size_t sz);
+/** @name file contents */
+
+/** @{ */
+
+constexpr const char default_read_access[] = "rb";
+constexpr const char default_write_access[] = "wb";
+
+size_t file_size(const char *filename, const char* access=default_read_access);
+
+size_t file_get_contents(const char *filename, char *buf, size_t sz, const char* access=default_read_access);
 
 template<class CharContainer>
-char *cwd(CharContainer *v)
+size_t file_get_contents(const char *filename, CharContainer *v, const char* access=default_read_access)
 {
-    if(v->empty()) v->resize(16);
-    while(cwd(&(*v)[0], v->size()) == nullptr)
+    size_t needed = file_get_contents(filename, v->empty() ? nullptr : &(*v)[0], v->size(), access);
+    if(needed > v->size())
     {
-        v->resize(v->size() * 2);
+        v->resize(needed);
+        needed = file_get_contents(filename, v->empty() ? nullptr : &(*v)[0], v->size(), access);
+        C4_CHECK(needed <= v->size());
     }
-    v->resize(strlen(&(*v)[0]));
-    return &(*v)[0];
+    v->resize(needed);
+    return needed;
 }
 
 template<class CharContainer>
-CharContainer cwd()
-{
-    CharContainer c;
-    c.resize(32);
-    cwd(&c);
-    return c;
-}
-
-
-//-----------------------------------------------------------------------------
-
-void delete_file(const char *filename);
-void delete_path(const char *pathname, bool recursive=false);
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-struct VisitedPath
-{
-    const char  *name;
-    PathType_e   type;
-    void        *user_data;
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    FTSENT      *node;
-#endif
-};
-
-using PathVisitor = int (*)(VisitedPath const& C4_RESTRICT p);
-
-int walk(const char *pathname, PathVisitor fn, void *user_data=nullptr);
-
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-size_t file_size(const char *filename);
-
-void   file_put_contents(const char *filename, const char *buf, size_t sz, const char* access="wb");
-size_t file_get_contents(const char *filename,       char *buf, size_t sz, const char* access="rb");
-
-template<class CharContainer>
-size_t file_get_contents(const char *filename, CharContainer *v)
-{
-    ::FILE *fp = ::fopen(filename, "rb");
-    C4_CHECK_MSG(fp != nullptr, "could not open file");
-    ::fseek(fp, 0, SEEK_END);
-    long sz = ::ftell(fp);
-    using size_type = typename CharContainer::size_type;
-    v->resize(static_cast<size_type>(sz));
-    if(sz)
-    {
-        ::rewind(fp);
-        size_t ret = ::fread(&(*v)[0], 1, v->size(), fp);
-        C4_CHECK(ret == (size_t)sz);
-    }
-    ::fclose(fp);
-    return v->size();
-}
-template<class CharContainer>
-CharContainer file_get_contents(const char *filename)
+CharContainer file_get_contents(const char *filename, const char* access=default_read_access)
 {
     CharContainer cc;
-    file_get_contents(filename, &cc);
+    file_get_contents<CharContainer>(filename, &cc, access);
     return cc;
 }
 
 
+void file_put_contents(const char *filename, const char *buf, size_t sz, const char* access=default_write_access);
+
 template<class CharContainer>
-inline void file_put_contents(const char *filename, CharContainer const& v, const char* access="wb")
+void file_put_contents(const char *filename, CharContainer const& v, const char* access=default_write_access)
 {
-    file_put_contents(filename, v.empty() ? "" : &v[0], v.size(), access);
+    const char *str = v.empty() ? "" : v.data();
+    file_put_contents(filename, str, v.size(), access);
 }
+
+/** @} */
 
 
 //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+struct VisitedFile
+{
+    const char  *name;
+    void        *user_data;
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    struct dirent *dirent_data;
+#endif
+};
+
+struct VisitedPath
+{
+    const char  *name;
+    void        *user_data;
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    struct stat const* stat_data;
+    int                ftw_info;
+    struct FTW  const* ftw_data;
+#endif
+};
+
+using FileVisitor = int (*)(VisitedFile const& p);
+using PathVisitor = int (*)(VisitedPath const& p);
+
+/** order is NOT guaranteed. does NOT descend into subdirectories. */
+int walk_entries(const char *pathname, FileVisitor fn, char *namebuf, size_t namebuf_size, void *user_data=nullptr);
+/** order is NOT guaranteed */
+int walk_tree(const char *pathname, PathVisitor fn, void *user_data=nullptr);
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
 /** open a writeable temporary file in the current working directory.
  * The dtor deletes the temporary file. */
 struct ScopedTmpFile
@@ -221,13 +269,7 @@ public:
 
 public:
 
-    ~ScopedTmpFile()
-    {
-        if(m_delete) delete_file(m_name);
-        if( ! m_file) return;
-        fclose(m_file);
-        m_file = nullptr;
-    }
+    ~ScopedTmpFile();
 
     ScopedTmpFile(ScopedTmpFile const&) noexcept = delete;
     ScopedTmpFile& operator=(ScopedTmpFile const&) noexcept = delete;
@@ -235,62 +277,34 @@ public:
     ScopedTmpFile(ScopedTmpFile && that) noexcept { _move(&that); }
     ScopedTmpFile& operator=(ScopedTmpFile && that) noexcept { _move(&that); return *this; }
 
-    void _move(ScopedTmpFile *that)
-    {
-        memcpy(m_name, that->m_name, sizeof(m_name));
-        memset(that->m_name, 0, sizeof(m_name));
-        m_file = that->m_file;
-        m_delete = that->m_delete;
-        that->m_file = nullptr;
-    }
+    void _move(ScopedTmpFile *that);
 
 public:
 
-    explicit ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
-    {
-        C4_CHECK(strlen(name_pattern) < sizeof(m_name));
-        tmpnam(m_name, sizeof(m_name), name_pattern);
-        m_file = ::fopen(m_name, access);
-        m_delete = delete_after_use;
-    }
-
-    explicit ScopedTmpFile(const char* contents_, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access="wb", bool delete_after_use=true)
-        : ScopedTmpFile(name_pattern, access, delete_after_use)
-    {
-        ::fwrite(contents_, 1, sz, m_file);
-        ::fflush(m_file);
-    }
+    explicit ScopedTmpFile(const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access=default_write_access, bool delete_after_use=true);
+    explicit ScopedTmpFile(const char* contents_, size_t sz, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char *access=default_write_access, bool delete_after_use=true);
 
     template <class CharContainer>
-    explicit ScopedTmpFile(CharContainer const& contents_, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access="wb", bool delete_after_use=true)
+    explicit ScopedTmpFile(CharContainer const& contents_, const char* name_pattern="c4_ScopedTmpFile.XXXXXX.tmp", const char* access=default_write_access, bool delete_after_use=true)
         : ScopedTmpFile(contents_.data(), contents_.size(), name_pattern, access, delete_after_use)
     {
     }
 
 public:
 
-    const char* full_path(char *buf, size_t sz) const
-    {
-        if(cwd(buf, sz) == nullptr) return nullptr;
-        size_t cwdlen = strlen(buf);
-        size_t namelen = strlen(m_name);
-        if(sz < cwdlen + 1 + namelen) return nullptr;
-        buf[cwdlen] = '/';
-        memcpy(buf+cwdlen+1, m_name, namelen);
-        buf[cwdlen + 1 + namelen] = '\0';
-        return buf;
-    }
+    const char* full_path(char *buf, size_t sz) const;
+
     template <class CharContainer>
     const char* full_path(CharContainer *v) const
     {
-        if(v->empty()) v->resize(16);
+        if(v->empty())
+            v->resize(16);
         while(full_path(&(*v)[0], v->size()) == nullptr)
-        {
             v->resize(v->size() * 2);
-        }
         v->resize(strlen(&(*v)[0]));
         return &(*v)[0];
     }
+
     template<class CharContainer>
     CharContainer full_path() const
     {
@@ -304,6 +318,7 @@ public:
     {
         file_get_contents(m_name, cont);
     }
+
     template<class CharContainer>
     CharContainer contents() const
     {

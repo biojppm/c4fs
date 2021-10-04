@@ -1,5 +1,7 @@
 #include "c4/fs/fs.hpp"
 
+#include <c4/platform.hpp>
+
 #include <c4/substr.hpp>
 #include <c4/charconv.hpp>
 
@@ -7,7 +9,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fts.h>
+#include <ftw.h>
+#include <dirent.h>
 #endif
 
 #include "c4/c4_push.hpp"
@@ -17,26 +20,16 @@
 #   include <direct.h>
 #endif
 
-#include <stdio.h>
 #include <random>
 
 
 namespace c4 {
 namespace fs {
 
-/** @todo make this more complete */
-bool should_escape(const char c)
-{
-    if(c == '\0') return false;
-#ifdef C4_WIN
-    return c == ' ';
-#else
-    return c == ' ';
-#endif
-}
+namespace /*anon*/ {
 
 /** @todo make this more complete */
-bool is_escape(size_t char_pos, const char *pathname, size_t sz)
+bool _is_escape(size_t char_pos, const char *pathname, size_t sz)
 {
     C4_UNUSED(sz);
     C4_ASSERT(char_pos < sz);
@@ -47,41 +40,6 @@ bool is_escape(size_t char_pos, const char *pathname, size_t sz)
     return c == '\\';
 #endif
 }
-
-bool is_sep(size_t char_pos, const char *pathname, size_t sz)
-{
-    C4_ASSERT(char_pos < sz);
-    const char c = pathname[char_pos];
-    const char prev = char_pos > 0 ? pathname[char_pos - 1] : '\0';
-#ifdef C4_WIN
-    if(c != '/' || c == '\\') return false;
-    if(prev) return ! is_escape(char_pos-1, pathname, sz);
-    return true;
-#else
-    if(c != '/') return false;
-    if(prev) return ! is_escape(char_pos-1, pathname, sz);
-    return true;
-#endif
-}
-
-bool to_unix_sep(char *pathname, size_t sz)
-{
-    bool changes = false;
-    for(size_t i = 0; i < sz; ++i)
-    {
-        if(is_sep(i, pathname, sz))
-        {
-            pathname[i] = '/';
-            changes = true;
-        }
-    }
-    return changes;
-}
-
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 
 int _exec_stat(const char *pathname, struct stat *s)
 {
@@ -113,38 +71,79 @@ PathType_e _path_type(struct stat *C4_RESTRICT s)
 #   endif
     // https://www.gnu.org/software/libc/manual/html_node/Testing-File-Type.html
     if(_c4is(REG))
-    {
         return REGFILE;
-    }
     else if(_c4is(DIR))
-    {
         return DIR;
-    }
 #if !defined(C4_WIN)
     else if(_c4is(LNK))
-    {
         return SYMLINK;
-    }
     else if(_c4is(FIFO))
-    {
         return PIPE;
-    }
     else if(_c4is(SOCK))
-    {
         return SOCK;
-    }
 #endif
     else //if(_c4is(BLK) || _c4is(CHR))
-    {
         return OTHER;
-    }
 #   undef _c4is
 #else
     C4_NOT_IMPLEMENTED();
     return OTHER;
 #endif
-
 }
+
+int _exec_mkdir(const char *dirname)
+{
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    return ::mkdir(dirname, 0755);
+#elif defined(C4_WIN) || defined(C4_XBOX)
+    return ::_mkdir(dirname);
+#else
+    C4_NOT_IMPLEMENTED();
+    return 0;
+#endif
+}
+
+} // namespace /*anon*/
+
+
+bool is_sep(size_t char_pos, const char *pathname, size_t sz)
+{
+    C4_ASSERT(char_pos < sz);
+    const char c = pathname[char_pos];
+    const char prev = char_pos > 0 ? pathname[char_pos - 1] : '\0';
+#ifdef C4_WIN
+    if(c != '/' || c == '\\')
+        return false;
+    if(prev)
+        return ! _is_escape(char_pos-1, pathname, sz);
+    return true;
+#else
+    if(c != '/')
+        return false;
+    if(prev)
+        return ! _is_escape(char_pos-1, pathname, sz);
+    return true;
+#endif
+}
+
+bool to_unix_sep(char *pathname, size_t sz)
+{
+    bool changes = false;
+    for(size_t i = 0; i < sz; ++i)
+    {
+        if(is_sep(i, pathname, sz))
+        {
+            pathname[i] = '/';
+            changes = true;
+        }
+    }
+    return changes;
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 
 bool path_exists(const char *pathname)
 {
@@ -156,6 +155,40 @@ bool path_exists(const char *pathname)
     return false;
 #endif
 }
+
+
+bool file_exists(const char *pathname)
+{
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+    struct stat s;
+    auto ret = _exec_stat(pathname, &s);
+    if(ret != 0)
+        return false;
+    auto type = _path_type(&s);
+    return type == REGFILE || type == SYMLINK;
+#else
+    C4_NOT_IMPLEMENTED();
+    return false;
+#endif
+}
+
+
+bool dir_exists(const char *pathname)
+{
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+    struct stat s;
+    auto ret = _exec_stat(pathname, &s);
+    if(ret != 0)
+        return false;
+    auto type = _path_type(&s);
+    return type == DIR;
+#else
+    C4_NOT_IMPLEMENTED();
+    return false;
+#endif
+}
+
+
 
 
 PathType_e path_type(const char *pathname)
@@ -182,6 +215,39 @@ path_times times(const char *pathname)
     return t;
 }
 
+uint64_t ctime(const char *pathname)
+{
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+    struct stat s;
+    _exec_stat(pathname, &s);
+    return static_cast<uint64_t>(s.st_ctime);
+#else
+    C4_NOT_IMPLEMENTED();
+#endif
+}
+
+uint64_t mtime(const char *pathname)
+{
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+    struct stat s;
+    _exec_stat(pathname, &s);
+    return static_cast<uint64_t>(s.st_mtime);
+#else
+    C4_NOT_IMPLEMENTED();
+#endif
+}
+
+uint64_t atime(const char *pathname)
+{
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+    struct stat s;
+    _exec_stat(pathname, &s);
+    return static_cast<uint64_t>(s.st_atime);
+#else
+    C4_NOT_IMPLEMENTED();
+#endif
+}
+
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -198,18 +264,6 @@ void rmdir(const char *dirname)
 #endif
 }
 
-int _exec_mkdir(const char *dirname)
-{
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    return ::mkdir(dirname, 0755);
-#elif defined(C4_WIN) || defined(C4_XBOX)
-    return ::_mkdir(dirname);
-#else
-    C4_NOT_IMPLEMENTED();
-    return 0;
-#endif
-}
-
 void mkdir(const char *dirname)
 {
     _exec_mkdir(dirname);
@@ -223,7 +277,8 @@ void mkdirs(char *pathname)
     size_t start_pos = 0;
     while(buf.next_split('/', &start_pos, &dir))
     {
-        if(dir.empty()) continue;
+        if(dir.empty())
+            continue;
         if(start_pos < sz)
         {
             char ctmp = buf.str[start_pos];
@@ -237,6 +292,36 @@ void mkdirs(char *pathname)
         }
     }
     C4_CHECK_MSG(dir_exists(pathname), "dir=%s", pathname);
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+int rmfile(const char *filename)
+{
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS) || defined(C4_WIN)
+    return ::unlink(filename);
+#else
+    C4_NOT_IMPLEMENTED();
+#endif
+}
+
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+int _unlink_cb(const char *fpath, const struct stat *, int , struct FTW *)
+{
+    return ::remove(fpath);
+}
+#endif
+
+int rmtree(const char *path)
+{
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    return nftw(path, _unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+#else
+    C4_NOT_IMPLEMENTED();
+#endif
 }
 
 
@@ -262,79 +347,74 @@ char *cwd(char *buf, size_t sz)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-void delete_file(const char *filename)
-{
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    ::unlink(filename);
-#elif defined(C4_WIN)
-    ::unlink(filename);
-#else
-    C4_NOT_IMPLEMENTED();
-#endif
-}
-
-void delete_path(const char *pathname, bool recursive)
-{
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    if( ! recursive)
-    {
-        ::remove(pathname);
-    }
-    else
-    {
-        walk(pathname, [](VisitedPath const& C4_RESTRICT p) -> int {
-                if(p.type == REGFILE || p.type == SYMLINK)
-                {
-                    delete_file(p.name);
-                }
-                return 0;
-            });
-        walk(pathname, [](VisitedPath const& C4_RESTRICT p) -> int {
-                if(p.type == DIR)
-                {
-                    delete_path(p.name, /*recursive*/false);
-                }
-                return 0;
-            });
-    }
-#else
-    C4_NOT_IMPLEMENTED();
-#endif
-}
-
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-int walk(const char *pathname, PathVisitor fn, void *user_data)
+int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t namebuf_len, void *user_data)
 {
     C4_CHECK(is_dir(pathname));
-
+    csubstr base = to_csubstr(pathname);
+    substr namebuf(namebuf_, namebuf_len);
+    C4_ASSERT(!namebuf.overlaps(base));
+    int exit_status = 0;
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
-    const char* argv[] = {pathname, nullptr};
-    ::FTS *root = ::fts_open((char *const *)argv, fts_options, nullptr);
-    C4_CHECK(root != nullptr);
-
-    ::FTSENT *node;
-    VisitedPath vp;
+    if(namebuf.len < base.len + 2 || namebuf_ == nullptr)
+        return ENAMETOOLONG;
+    memcpy(namebuf.str, base.str, base.len);
+    namebuf[base.len] = '/';
+    substr filenamebuf = namebuf.sub(base.len + 1);
+    ::DIR *dir = opendir(pathname);
+    C4_CHECK(dir);
+    VisitedFile vp;
     vp.user_data = user_data;
-    while(1)
+    vp.name = namebuf.str;
+    struct dirent *entry;
+    while((entry = readdir(dir)) != nullptr)
     {
-        node = fts_read(root);
-        if( ! node) break;
-        vp.name = node->fts_name;
-        vp.type = _path_type(node->fts_statp);
-        vp.node = node;
-        int ret = fn(vp);
-        if(ret != 0) break;
+        if(!strcmp(entry->d_name, "."))
+            continue;
+        if(!strcmp(entry->d_name, ".."))
+            continue;
+        csubstr entry_name = to_csubstr(entry->d_name);
+        if(filenamebuf.len < entry_name.len + 1)
+        {
+            exit_status = ENAMETOOLONG;
+            break;
+        }
+        memcpy(filenamebuf.str, entry_name.str, entry_name.len);
+        filenamebuf[entry_name.len] = '\0';
+        vp.dirent_data = entry;
+        if(fn(vp) != 0)
+            break;
     }
-    ::fts_close(root);
+    closedir(dir);
 #else
     C4_NOT_IMPLEMENTED();
 #endif
+    return exit_status;
+}
+
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+PathVisitor wtf;
+int _path_visitor_adapter(const char *name, const struct stat *stat_data, int ftw_info, struct FTW *ftw_data)
+{
+    VisitedPath vp;
+    vp.name = name;
+    vp.user_data = nullptr; // fixme
+    vp.stat_data = stat_data;
+    vp.ftw_info = ftw_info;
+    vp.ftw_data = ftw_data;
+    return wtf(vp);
+}
+#endif
+
+int walk_tree(const char *pathname, PathVisitor fn, void *user_data)
+{
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    wtf = fn; // fixme
+    (void)user_data;
+    return nftw(pathname, _path_visitor_adapter, 64, FTW_PHYS);
+#else
+    C4_NOT_IMPLEMENTED();
     return 0;
+#endif
 }
 
 
@@ -372,9 +452,9 @@ const char* tmpnam(char *buf_, size_t bufsz, const char *fmt_, char subchar)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-size_t file_size(const char *filename)
+size_t file_size(const char *filename, const char *access)
 {
-    ::FILE *fp = ::fopen(filename, "rb");
+    ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
     size_t fs = static_cast<size_t>(::ftell(fp));
@@ -389,7 +469,7 @@ size_t file_get_contents(const char *filename, char *buf, size_t sz, const char*
     ::fseek(fp, 0, SEEK_END);
     size_t fs = static_cast<size_t>(::ftell(fp));
     ::rewind(fp);
-    if(fs <= sz)
+    if(fs <= sz && buf != nullptr)
     {
         size_t ret = ::fread(buf, 1, fs, fp);
         C4_CHECK(ret == fs);
@@ -404,6 +484,59 @@ void file_put_contents(const char *filename, const char *buf, size_t sz, const c
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fwrite(buf, 1, sz, fp);
     ::fclose(fp);
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+ScopedTmpFile::ScopedTmpFile(const char* name_pattern, const char *access, bool delete_after_use)
+{
+    C4_CHECK(strlen(name_pattern) < sizeof(m_name));
+    tmpnam(m_name, sizeof(m_name), name_pattern);
+    m_file = ::fopen(m_name, access);
+    m_delete = delete_after_use;
+}
+
+ScopedTmpFile::ScopedTmpFile(const char* contents_, size_t sz, const char* name_pattern, const char *access, bool delete_after_use)
+    : ScopedTmpFile(name_pattern, access, delete_after_use)
+{
+    ::fwrite(contents_, 1, sz, m_file);
+    ::fflush(m_file);
+}
+
+ScopedTmpFile::~ScopedTmpFile()
+{
+    if(m_delete)
+        rmfile(m_name);
+    if( ! m_file)
+        return;
+    fclose(m_file);
+    m_file = nullptr;
+}
+
+void ScopedTmpFile::_move(ScopedTmpFile *that)
+{
+    memcpy(m_name, that->m_name, sizeof(m_name));
+    memset(that->m_name, 0, sizeof(m_name));
+    m_file = that->m_file;
+    m_delete = that->m_delete;
+    that->m_file = nullptr;
+}
+
+const char* ScopedTmpFile::full_path(char *buf, size_t sz) const
+{
+    if(cwd(buf, sz) == nullptr)
+        return nullptr;
+    size_t cwdlen = strlen(buf);
+    size_t namelen = strlen(m_name);
+    if(sz < cwdlen + 1 + namelen)
+        return nullptr;
+    buf[cwdlen] = '/';
+    memcpy(buf+cwdlen+1, m_name, namelen);
+    buf[cwdlen + 1 + namelen] = '\0';
+    return buf;
 }
 
 } // namespace fs
