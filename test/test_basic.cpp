@@ -119,7 +119,11 @@ TEST_CASE("path_times")
     CHECK_EQ(t1.creation, ctime(file));
     CHECK_EQ(t1.modification, mtime(file));
     CHECK_EQ(t1.access, atime(file));
+    #ifdef C4_WIN
+    CHECK_GE(t1.creation, t0.creation);
+    #else
     CHECK_GT(t1.creation, t0.creation);
+    #endif
     CHECK_GT(t1.modification, t0.modification);
     // CHECK_GT(t1.access, t0.access); // not required by the system
 }
@@ -131,6 +135,8 @@ TEST_CASE("path_times")
 
 TEST_CASE("mkdir.basic")
 {
+    if(dir_exists("c4fdx"))
+        CHECK(rmdir("c4fdx"));
     SUBCASE("mkdir") {
         CHECK_FALSE(dir_exists("c4fdx"));
         CHECK_FALSE(dir_exists("c4fdx/a"));
@@ -210,6 +216,8 @@ TEST_CASE("rmfile")
 
 const char * _make_tree()
 {
+    if(dir_exists("c4fdx"))
+        CHECK(rmdir("c4fdx"));
     auto fpcon = [](const char* path){
         file_put_contents(path, csubstr("THE CONTENTS"));
         CHECK(file_exists(path));
@@ -255,8 +263,11 @@ const char * _make_tree()
 
 TEST_CASE("rmtree")
 {
+    if(dir_exists("c4fdx"))
+        rmtree("c4fdx");
     SUBCASE("existing")
     {
+        CHECK(!dir_exists("c4fdx"));
         auto treename = _make_tree();
         CHECK(dir_exists(treename));
         CHECK_EQ(rmtree(treename), 0);
@@ -278,6 +289,7 @@ u32 file_count = 0;
 u32 dir_count = 0;
 int entry_visitor(VisitedFile const& p)
 {
+    std::cout << p.name << std::endl;
     CHECK(path_exists(p.name));
     if(is_file(p.name))
         ++file_count;
@@ -319,14 +331,14 @@ TEST_CASE("walk_entries")
         CHECK_EQ(file_count, 2);
         CHECK_EQ(dir_count, 0);
     }
-    mkdir("c4fdx/dir");
-    file_put_contents("c4fdx/dir/file2", csubstr("asdasdasd"));
-    file_put_contents("c4fdx/dir/file3", csubstr("asdasdasd"));
-    mkdir("c4fdx/dir2");
-    file_put_contents("c4fdx/dir2/file4", csubstr("asdasdasd"));
-    file_put_contents("c4fdx/dir2/file5", csubstr("asdasdasd"));
     SUBCASE("dont_descend_into_subdirs")
     {
+        mkdir("c4fdx/dir");
+        file_put_contents("c4fdx/dir/file2", csubstr("asdasdasd"));
+        file_put_contents("c4fdx/dir/file3", csubstr("asdasdasd"));
+        mkdir("c4fdx/dir2");
+        file_put_contents("c4fdx/dir2/file4", csubstr("asdasdasd"));
+        file_put_contents("c4fdx/dir2/file5", csubstr("asdasdasd"));
         dir_count = file_count = 0;
         char buf[100];
         int ret = walk_entries(dirname, entry_visitor, buf, sizeof(buf));
@@ -362,7 +374,7 @@ TEST_CASE("walk_tree")
         int ret = walk_tree(treename, path_visitor);
         CHECK(ret == 0);
         CHECK_EQ(file_count, 26);
-        CHECK_EQ(dir_count, 14); // but must see the new subdirs
+        CHECK_EQ(dir_count, 14);
         CHECK_EQ(rmtree(treename), 0);
     }
 }

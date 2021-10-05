@@ -10,6 +10,9 @@
 struct dirent;
 struct stat;
 struct FTW;
+#elif defined(C4_WIN)
+struct _WIN32_FIND_DATAA;
+typedef struct _WIN32_FIND_DATAA WIN32_FIND_DATAA;
 #endif
 
 #include "c4/c4_push.hpp"
@@ -75,8 +78,8 @@ uint64_t atime(const char *pathname);
 
 /** @{ */
 void mkdirs(char *pathname);
-void mkdir(const char *pathname);
-void rmdir(const char *pathname);
+int mkdir(const char *pathname);
+int rmdir(const char *pathname);
 
 int rmfile(const char *filename);
 int rmtree(const char *pathname);
@@ -226,19 +229,23 @@ struct VisitedFile
     void        *user_data;
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     struct dirent *dirent_data;
+#elif defined(C4_WIN)
+    WIN32_FIND_DATAA *find_file_data;
 #endif
 };
 
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
 struct VisitedPath
 {
     const char  *name;
     void        *user_data;
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     struct stat const* stat_data;
     int                ftw_info;
     struct FTW  const* ftw_data;
-#endif
 };
+#elif defined(C4_WIN)
+using VisitedPath = VisitedFile;
+#endif
 
 using FileVisitor = int (*)(VisitedFile const& p);
 using PathVisitor = int (*)(VisitedPath const& p);

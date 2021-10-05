@@ -17,7 +17,11 @@
 
 #ifdef C4_WIN
 #   include <windef.h>
+#   include <minwindef.h>
 #   include <direct.h>
+#   include <fileapi.h>
+#   include <handleapi.h>
+#   include <c4/memory_resource.hpp>
 #endif
 
 #include <random>
@@ -253,20 +257,20 @@ uint64_t atime(const char *pathname)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-void rmdir(const char *dirname)
+int rmdir(const char *dirname)
 {
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    ::rmdir(dirname);
+    return ::rmdir(dirname);
 #elif defined(C4_WIN) || defined(C4_XBOX)
-    ::_rmdir(dirname);
+    return ::_rmdir(dirname);
 #else
     C4_NOT_IMPLEMENTED();
 #endif
 }
 
-void mkdir(const char *dirname)
+int mkdir(const char *dirname)
 {
-    _exec_mkdir(dirname);
+    return _exec_mkdir(dirname);
 }
 
 void mkdirs(char *pathname)
@@ -305,6 +309,7 @@ int rmfile(const char *filename)
     return ::unlink(filename);
 #else
     C4_NOT_IMPLEMENTED();
+    return 1;
 #endif
 }
 
@@ -313,14 +318,27 @@ int _unlink_cb(const char *fpath, const struct stat *, int , struct FTW *)
 {
     return ::remove(fpath);
 }
+#elif defined(C4_WIN)
+int _rmtree_visitor(VisitedPath const& p)
+{
+    if((p.find_file_data && p.find_file_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || is_dir(p.name))
+        return rmdir(p.name);
+    else
+        return rmfile(p.name);
+}
 #endif
 
 int rmtree(const char *path)
 {
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return nftw(path, _unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+#elif defined(C4_WIN)
+    if(!dir_exists(path))
+        return ENOENT;
+    return walk_tree(path, _rmtree_visitor);
 #else
     C4_NOT_IMPLEMENTED();
+    return 1;
 #endif
 }
 
@@ -350,10 +368,13 @@ char *cwd(char *buf, size_t sz)
 int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t namebuf_len, void *user_data)
 {
     C4_CHECK(is_dir(pathname));
+    int exit_status = 0;
     csubstr base = to_csubstr(pathname);
     substr namebuf(namebuf_, namebuf_len);
     C4_ASSERT(!namebuf.overlaps(base));
-    int exit_status = 0;
+    VisitedFile vp;
+    vp.user_data = user_data;
+    vp.name = namebuf.str;
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     if(namebuf.len < base.len + 2 || namebuf_ == nullptr)
         return ENAMETOOLONG;
@@ -362,9 +383,6 @@ int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t na
     substr filenamebuf = namebuf.sub(base.len + 1);
     ::DIR *dir = opendir(pathname);
     C4_CHECK(dir);
-    VisitedFile vp;
-    vp.user_data = user_data;
-    vp.name = namebuf.str;
     struct dirent *entry;
     while((entry = readdir(dir)) != nullptr)
     {
@@ -386,13 +404,40 @@ int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t na
     }
     closedir(dir);
 #else
-    C4_NOT_IMPLEMENTED();
+    if(namebuf.len < base.len + 4 || namebuf_ == nullptr)
+        return ENAMETOOLONG;
+    memcpy(namebuf.str, base.str, base.len);
+    memcpy(namebuf.str + base.len, "\\*\0", 3);
+    WIN32_FIND_DATAA ffd = {};
+    HANDLE hFindFile = FindFirstFileA(namebuf.str, &ffd);
+    C4_CHECK(hFindFile != INVALID_HANDLE_VALUE);
+    namebuf[base.len] = '/';
+    substr filenamebuf = namebuf.sub(base.len + 1);
+    vp.find_file_data = &ffd;
+    while(FindNextFileA(hFindFile, &ffd))
+    {
+        if(!strcmp(ffd.cFileName, "."))
+            continue;
+        if(!strcmp(ffd.cFileName, ".."))
+            continue;
+        csubstr entry_name = to_csubstr(ffd.cFileName);
+        if(filenamebuf.len < entry_name.len + 1)
+        {
+            exit_status = ENAMETOOLONG;
+            break;
+        }
+        memcpy(filenamebuf.str, entry_name.str, entry_name.len);
+        filenamebuf[entry_name.len] = '\0';
+        if(fn(vp) != 0)
+            break;
+    }
+    FindClose(hFindFile);
 #endif
     return exit_status;
 }
 
+PathVisitor wtf; // fixme
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-PathVisitor wtf;
 int _path_visitor_adapter(const char *name, const struct stat *stat_data, int ftw_info, struct FTW *ftw_data)
 {
     VisitedPath vp;
@@ -403,14 +448,87 @@ int _path_visitor_adapter(const char *name, const struct stat *stat_data, int ft
     vp.ftw_data = ftw_data;
     return wtf(vp);
 }
+#elif defined(C4_WIN)
+int _walk_tree(PathVisitor fn, void *user_data, substr namebuf, size_t namelen)
+{
+    int exit_status = 0;
+    VisitedPath vp;
+    vp.user_data = user_data;
+    vp.name = namebuf.str;
+    if(namebuf.len < namelen + 4)
+        return ENAMETOOLONG;
+    WIN32_FIND_DATAA ffd = {};
+    memcpy(namebuf.str + namelen, "\\*\0", 3);
+    HANDLE hFindFile = FindFirstFileA(namebuf.str, &ffd);
+    C4_CHECK(hFindFile != INVALID_HANDLE_VALUE);
+    namebuf[namelen] = '/';
+    substr filenamebuf = namebuf.sub(namelen + 1);
+    vp.find_file_data = &ffd;
+    while(FindNextFileA(hFindFile, &ffd))
+    {
+        if(!strcmp(ffd.cFileName, "."))
+            continue;
+        if(!strcmp(ffd.cFileName, ".."))
+            continue;
+        csubstr entry_name = to_csubstr(ffd.cFileName);
+        if(filenamebuf.len < entry_name.len + 2)
+        {
+            exit_status = ENAMETOOLONG;
+            break;
+        }
+        memcpy(filenamebuf.str, entry_name.str, entry_name.len);
+        filenamebuf[entry_name.len] = '\0';
+        if(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            int ret = _walk_tree(fn, user_data, namebuf, namelen + 1 + entry_name.len);
+            if(ret)
+            {
+                exit_status = ret;
+                break;
+            }
+        }
+        if(fn(vp) != 0)
+            break;
+    }
+    FindClose(hFindFile);
+    namebuf[namelen] = '\0';
+    return exit_status;
+}
 #endif
 
 int walk_tree(const char *pathname, PathVisitor fn, void *user_data)
 {
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    C4_CHECK(is_dir(pathname));
     wtf = fn; // fixme
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     (void)user_data;
     return nftw(pathname, _path_visitor_adapter, 64, FTW_PHYS);
+#elif defined(C4_WIN)
+    substr namebuf;
+    namebuf.len = MAX_PATH;
+    csubstr base = to_csubstr(pathname);
+    if(namebuf.len < base.len + 1)
+        namebuf.len = 2 * (base.len + 1);
+    namebuf.str = (char*) c4::aalloc(namebuf.len, alignof(std::max_align_t));
+    C4_ASSERT(!namebuf.overlaps(base));
+    memcpy(namebuf.str, base.str, base.len);
+    namebuf[base.len] = '\0';
+    int exit_status = _walk_tree(fn, user_data, namebuf, base.len);
+    while(exit_status == ENAMETOOLONG)
+    {
+        c4::afree(namebuf.str);
+        namebuf.len *= 2;
+        namebuf.str = (char*) c4::aalloc(namebuf.len, alignof(std::max_align_t));
+        exit_status = _walk_tree(fn, user_data, namebuf, base.len);
+    }
+    if(!exit_status)
+    {
+        VisitedPath vp = {};
+        vp.name = pathname;
+        fn(vp);
+    }
+    c4::afree(namebuf.str);
+    return exit_status;
 #else
     C4_NOT_IMPLEMENTED();
     return 0;
