@@ -1,4 +1,4 @@
-c4_setup_testing()
+c4_setup_testing(DOCTEST)
 
 function(c4fs_add_test name)
     c4_add_executable(c4fs-test-${name}
