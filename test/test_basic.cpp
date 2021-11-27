@@ -219,7 +219,7 @@ const char * _make_tree()
     if(dir_exists("c4fdx"))
         CHECK(rmdir("c4fdx"));
     auto fpcon = [](const char* path){
-        file_put_contents(path, csubstr("THE CONTENTS"));
+        file_put_contents(path, to_csubstr(path));
         CHECK(file_exists(path));
     };
     mkdir("c4fdx");
@@ -348,6 +348,78 @@ TEST_CASE("walk_entries")
     }
     CHECK_EQ(rmtree(dirname), 0);
     CHECK_EQ(cwd<std::string>(), cwd_orig);
+}
+
+TEST_CASE("list_entries")
+{
+    char dirname[] = "c4fdx/dir\0";
+    mkdirs(dirname);
+    file_put_contents("c4fdx/dir/file09", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file00", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file08", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file01", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file07", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file02", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file06", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file03", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file05", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/dir/file04", csubstr("asdasdasd"));
+    size_t num_files = 10u;
+    size_t arena_size = (num_files + 1u) * strlen("c4fdx/dir/file00");
+    SUBCASE("no_buffer")
+    {
+        EntryList el = {};
+        int ret = list_entries("c4fdx/dir", &el);
+        CHECK_NE(ret, 0);
+        CHECK_EQ(el.names.required_size, 0u);
+        CHECK_GE(el.arena.required_size, arena_size);
+    }
+    SUBCASE("buffer_ok")
+    {
+        char namebuf[1000] = {};
+        char *namesbuf[20] = {};
+        EntryList el(namebuf, namesbuf);
+        int ret = list_entries("c4fdx/dir", &el);
+        CHECK_EQ(ret, 0);
+        CHECK_GE(el.arena.required_size, arena_size);
+        REQUIRE_EQ(el.names.required_size, num_files);
+        std::sort(namesbuf, namesbuf+num_files,
+                  [](const char *lhs, const char *rhs){
+                      return strcmp(lhs, rhs) < 0;
+                  });
+        CHECK_EQ(to_csubstr(namesbuf[0]), csubstr("c4fdx/dir/file00"));
+        CHECK_EQ(to_csubstr(namesbuf[1]), csubstr("c4fdx/dir/file01"));
+        CHECK_EQ(to_csubstr(namesbuf[2]), csubstr("c4fdx/dir/file02"));
+        CHECK_EQ(to_csubstr(namesbuf[3]), csubstr("c4fdx/dir/file03"));
+        CHECK_EQ(to_csubstr(namesbuf[4]), csubstr("c4fdx/dir/file04"));
+        CHECK_EQ(to_csubstr(namesbuf[5]), csubstr("c4fdx/dir/file05"));
+        CHECK_EQ(to_csubstr(namesbuf[6]), csubstr("c4fdx/dir/file06"));
+        CHECK_EQ(to_csubstr(namesbuf[7]), csubstr("c4fdx/dir/file07"));
+        CHECK_EQ(to_csubstr(namesbuf[8]), csubstr("c4fdx/dir/file08"));
+        CHECK_EQ(to_csubstr(namesbuf[9]), csubstr("c4fdx/dir/file09"));
+    }
+    SUBCASE("iter_entry_list")
+    {
+        char namebuf[1000] = {};
+        char *namesbuf[20] = {};
+        EntryList el(namebuf, namesbuf);
+        int ret = list_entries("c4fdx/dir", &el);
+        CHECK_EQ(ret, 0);
+        CHECK_GE(el.arena.required_size, arena_size);
+        REQUIRE_EQ(el.names.required_size, num_files);
+        el.sort();
+        CHECK_EQ(to_csubstr(namesbuf[0]), csubstr("c4fdx/dir/file00"));
+        CHECK_EQ(to_csubstr(namesbuf[1]), csubstr("c4fdx/dir/file01"));
+        CHECK_EQ(to_csubstr(namesbuf[2]), csubstr("c4fdx/dir/file02"));
+        CHECK_EQ(to_csubstr(namesbuf[3]), csubstr("c4fdx/dir/file03"));
+        CHECK_EQ(to_csubstr(namesbuf[4]), csubstr("c4fdx/dir/file04"));
+        CHECK_EQ(to_csubstr(namesbuf[5]), csubstr("c4fdx/dir/file05"));
+        CHECK_EQ(to_csubstr(namesbuf[6]), csubstr("c4fdx/dir/file06"));
+        CHECK_EQ(to_csubstr(namesbuf[7]), csubstr("c4fdx/dir/file07"));
+        CHECK_EQ(to_csubstr(namesbuf[8]), csubstr("c4fdx/dir/file08"));
+        CHECK_EQ(to_csubstr(namesbuf[9]), csubstr("c4fdx/dir/file09"));
+    }
+    rmtree("c4fdx");
 }
 
 

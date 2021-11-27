@@ -5,6 +5,8 @@
 #include <c4/fs/export.hpp>
 #include <stdio.h>
 #include <string.h>
+#include <iterator>
+#include <algorithm>
 
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
 struct dirent;
@@ -84,6 +86,18 @@ int rmdir(const char *pathname);
 int rmfile(const char *filename);
 int rmtree(const char *pathname);
 
+/** @} */
+
+
+//-----------------------------------------------------------------------------
+
+/** @name file copy and move */
+
+/** @{ */
+void copy_file(const char *file, const char *dst);
+void copy_tree(const char *tree, const char *dst);
+void move_file(const char *file, const char *dst);
+void move_tree(const char *tree, const char *dst);
 /** @} */
 
 
@@ -250,10 +264,97 @@ using VisitedPath = VisitedFile;
 using FileVisitor = int (*)(VisitedFile const& p);
 using PathVisitor = int (*)(VisitedPath const& p);
 
-/** order is NOT guaranteed. does NOT descend into subdirectories. */
+
+/** order is NOT guaranteed. Not recursive - does NOT descend into subdirectories. */
 int walk_entries(const char *pathname, FileVisitor fn, char *namebuf, size_t namebuf_size, void *user_data=nullptr);
 /** order is NOT guaranteed */
 int walk_tree(const char *pathname, PathVisitor fn, void *user_data=nullptr);
+
+struct EntryList
+{
+    template<class T>
+    struct maybe_buf
+    {
+        T *buf;
+        size_t size;
+        size_t required_size;
+        maybe_buf() : buf(), size(), required_size() {}
+        maybe_buf(T *buf_, size_t size_) : buf(buf_), size(size_), required_size() {}
+        bool valid() const { return required_size <= size; }
+        maybe_buf consume(size_t num)
+        {
+            maybe_buf mb = *this;
+            mb.buf += num;
+            mb.size = num <= size ? size - num : 0;
+            mb.required_size = required_size + num;
+            return mb;
+        }
+    };
+
+    maybe_buf<char> arena;
+    maybe_buf<char*> names;
+
+public:
+
+    EntryList() : arena(), names() {}
+    template<size_t name_arena_size, size_t name_list_size>
+    EntryList(char (&name_arena)[name_arena_size], char *(&name_list)[name_list_size])
+        : arena(name_arena, name_arena_size)
+        , names(name_list, name_list_size)
+    {
+    }
+    EntryList(char *name_arena, size_t name_arena_size, char **name_list, size_t name_list_size)
+        : arena(name_arena, name_arena_size)
+        , names(name_list, name_list_size)
+    {
+    }
+
+    void reset() { arena.required_size = 0; names.required_size = 0; }
+    bool valid() const { return arena.valid() && names.valid(); }
+
+private:
+
+    template<class T>
+    struct iterator_impl
+    {
+        using iterator_category = std::random_access_iterator_tag;
+        using difference_type = ssize_t;
+        using value_type = const char*;
+        using reference = const char*&;
+        using pointer = const char**;
+        T *entry_list;
+        size_t i;
+        reference operator* () const { C4_CHECK(entry_list->valid() && i < entry_list->names.required_size); return (reference)entry_list->names.buf[i]; }
+        bool operator== (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); return i == that.i; }
+        bool operator!= (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); return i != that.i; }
+        bool operator<  (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); return i <  that.i; }
+        iterator_impl& operator++ () { ++i; return *this; }
+        iterator_impl& operator-- () { C4_CHECK(i > 0); --i; return *this; }
+        iterator_impl  operator+  (size_t adv) const { return {entry_list, i + adv}; }
+        iterator_impl  operator-  (size_t bck) const { C4_CHECK(i >= bck); return {entry_list, i - bck}; }
+        ssize_t operator- (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); C4_CHECK(i >= that.i); return ssize_t(i) - ssize_t(that.i); }
+    };
+
+public:
+
+    using iterator = iterator_impl<EntryList>;
+    using const_iterator = iterator_impl<const EntryList>;
+
+    iterator begin() { C4_CHECK(valid()); return {this, 0}; }
+    iterator end() { C4_CHECK(valid()); return {this, names.required_size}; }
+    const_iterator begin() const { C4_CHECK(valid()); return {this, 0}; }
+    const_iterator end() const { C4_CHECK(valid()); return {this, names.required_size}; }
+
+    void sort()
+    {
+        std::sort(begin(), end(),
+                  [](const char *lhs, const char *rhs){
+                      return strcmp(lhs, rhs) < 0;
+                  });
+    }
+};
+/** order is NOT guaranteed. Not recursive - does NOT descend into subdirectories. */
+int list_entries(const char *pathname, EntryList *C4_RESTRICT entries, size_t max_scratch_size=2048);
 
 
 //-----------------------------------------------------------------------------

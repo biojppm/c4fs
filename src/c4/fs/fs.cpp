@@ -386,9 +386,9 @@ int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t na
     struct dirent *entry;
     while((entry = readdir(dir)) != nullptr)
     {
-        if(!strcmp(entry->d_name, "."))
+        if(strcmp(entry->d_name, ".") == 0)
             continue;
-        if(!strcmp(entry->d_name, ".."))
+        if(strcmp(entry->d_name, "..") == 0)
             continue;
         csubstr entry_name = to_csubstr(entry->d_name);
         if(filenamebuf.len < entry_name.len + 1)
@@ -533,6 +533,42 @@ int walk_tree(const char *pathname, PathVisitor fn, void *user_data)
     C4_NOT_IMPLEMENTED();
     return 0;
 #endif
+}
+
+
+thread_local static EntryList _list_entries_workspace = {};
+int _list_entries_visitor(VisitedFile const& vf)
+{
+    size_t namelen = strlen(vf.name);
+    auto arena_prev = _list_entries_workspace.arena;
+    auto names_prev = _list_entries_workspace.names;
+    _list_entries_workspace.names.required_size += 1u;
+    _list_entries_workspace.arena.required_size += namelen + 1u;
+    if(_list_entries_workspace.valid())
+    {
+        char *dst = arena_prev.buf + arena_prev.required_size;
+        memcpy(dst, vf.name, namelen);
+        dst[namelen] = '\0';
+        names_prev.buf[names_prev.required_size] = dst;
+    }
+    return 0;
+}
+
+int list_entries(const char *pathname, EntryList *C4_RESTRICT entries, size_t max_scratch_size)
+{
+    entries->reset();
+    _list_entries_workspace = *entries;
+    // use the 256 first arena bytes to write the temporary names in walk_entries()
+    size_t scratch_size = 256u;
+    int ret = 0;
+    do
+    {
+        _list_entries_workspace.arena = entries->arena.consume(scratch_size);
+        ret = walk_entries(pathname, _list_entries_visitor, entries->arena.buf, entries->arena.size);
+        scratch_size *= 2;
+    } while(ret == ENAMETOOLONG && scratch_size < max_scratch_size);
+    *entries = _list_entries_workspace;
+    return ret;
 }
 
 
