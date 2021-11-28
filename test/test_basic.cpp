@@ -308,26 +308,29 @@ TEST_CASE("walk_entries")
     SUBCASE("empty_name_buffer")
     {
         dir_count = file_count = 0;
-        int ret = walk_entries(dirname, entry_visitor, nullptr, 0);
-        CHECK_NE(ret, 0);
+        maybe_buf<char> buf;
+        bool ok = walk_entries(dirname, entry_visitor, &buf);
+        CHECK(!ok);
         CHECK_EQ(file_count, 0);
         CHECK_EQ(dir_count, 0);
     }
     SUBCASE("small_name_buffer")
     {
-        char buf[sizeof(dirname) + 3]; // not enough for the children files
+        char buf_[sizeof(dirname) + 3]; // not enough for the children files
+        maybe_buf<char> buf(buf_);
         dir_count = file_count = 0;
-        int ret = walk_entries(dirname, entry_visitor, buf, sizeof(buf));
-        CHECK(ret != 0);
+        bool ok = walk_entries(dirname, entry_visitor, &buf);
+        CHECK(!ok);
         CHECK_EQ(file_count, 0);
         CHECK_EQ(dir_count, 0);
     }
     SUBCASE("vanilla")
     {
-        char buf[100];
+        char buf_[100];
+        maybe_buf<char> buf(buf_);
         dir_count = file_count = 0;
-        int ret = walk_entries(dirname, entry_visitor, buf, sizeof(buf));
-        CHECK(ret == 0);
+        bool ok = walk_entries(dirname, entry_visitor, &buf);
+        CHECK(ok);
         CHECK_EQ(file_count, 2);
         CHECK_EQ(dir_count, 0);
     }
@@ -340,9 +343,10 @@ TEST_CASE("walk_entries")
         file_put_contents("c4fdx/dir2/file4", csubstr("asdasdasd"));
         file_put_contents("c4fdx/dir2/file5", csubstr("asdasdasd"));
         dir_count = file_count = 0;
-        char buf[100];
-        int ret = walk_entries(dirname, entry_visitor, buf, sizeof(buf));
-        CHECK(ret == 0);
+        char buf_[100];
+        maybe_buf<char> buf(buf_);
+        bool ok = walk_entries(dirname, entry_visitor, &buf);
+        CHECK(ok);
         CHECK_EQ(file_count, 2); // must not have changed
         CHECK_EQ(dir_count, 2); // but must see the new subdirs
     }
@@ -368,20 +372,32 @@ TEST_CASE("list_entries")
     size_t arena_size = (num_files + 1u) * strlen("c4fdx/dir/file00");
     SUBCASE("no_buffer")
     {
+        maybe_buf<char> scratch;
         EntryList el = {};
-        int ret = list_entries("c4fdx/dir", &el);
-        CHECK_NE(ret, 0);
+        bool ok = list_entries("c4fdx/dir", &el, &scratch);
+        CHECK(!ok);
         CHECK_EQ(el.names.required_size, 0u);
-        CHECK_GE(el.arena.required_size, arena_size);
+        CHECK_GE(el.arena.required_size, 0u);
+        CHECK_GE(scratch.required_size, strlen("c4fdx/dir/file00"));
+        CHECK(el.arena.valid());
+        CHECK(el.names.valid());
+        CHECK(el.valid());
+        CHECK(!scratch.valid());
     }
     SUBCASE("buffer_ok")
     {
         char namebuf[1000] = {};
         char *namesbuf[20] = {};
+        char scratchbuf[256] = {};
+        maybe_buf<char> scratch(scratchbuf);
         EntryList el(namebuf, namesbuf);
-        int ret = list_entries("c4fdx/dir", &el);
-        CHECK_EQ(ret, 0);
-        CHECK_GE(el.arena.required_size, arena_size);
+        bool ok = list_entries("c4fdx/dir", &el, &scratch);
+        CHECK(ok);
+        CHECK(el.arena.valid());
+        CHECK(el.names.valid());
+        CHECK(el.valid());
+        CHECK(scratch.valid());
+        CHECK_LE(el.arena.required_size, arena_size);
         REQUIRE_EQ(el.names.required_size, num_files);
         std::sort(namesbuf, namesbuf+num_files,
                   [](const char *lhs, const char *rhs){
@@ -402,10 +418,16 @@ TEST_CASE("list_entries")
     {
         char namebuf[1000] = {};
         char *namesbuf[20] = {};
+        char scratchbuf[256] = {};
+        maybe_buf<char> scratch(scratchbuf);
         EntryList el(namebuf, namesbuf);
-        int ret = list_entries("c4fdx/dir", &el);
-        CHECK_EQ(ret, 0);
-        CHECK_GE(el.arena.required_size, arena_size);
+        bool ok = list_entries("c4fdx/dir", &el, &scratch);
+        CHECK(ok);
+        CHECK(el.arena.valid());
+        CHECK(el.names.valid());
+        CHECK(el.valid());
+        CHECK(scratch.valid());
+        CHECK_LT(el.arena.required_size, arena_size);
         REQUIRE_EQ(el.names.required_size, num_files);
         el.sort();
         CHECK_EQ(to_csubstr(namesbuf[0]), csubstr("c4fdx/dir/file00"));

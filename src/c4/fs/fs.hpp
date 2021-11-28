@@ -264,35 +264,30 @@ using VisitedPath = VisitedFile;
 using FileVisitor = int (*)(VisitedFile const& p);
 using PathVisitor = int (*)(VisitedPath const& p);
 
+template<class T>
+struct maybe_buf
+{
+    T *buf;
+    size_t size;
+    size_t required_size;
+    template<size_t N>
+    maybe_buf(T (&buf_)[N]) : buf(buf_), size(N), required_size() {}
+    maybe_buf(T *buf_, size_t size_) : buf(buf_), size(size_), required_size() {}
+    maybe_buf() : buf(), size(), required_size() {}
+    bool valid() const { return required_size <= size; }
+    void reset() { required_size = 0; }
+};
+
 
 /** order is NOT guaranteed. Not recursive - does NOT descend into subdirectories. */
-int walk_entries(const char *pathname, FileVisitor fn, char *namebuf, size_t namebuf_size, void *user_data=nullptr);
-/** order is NOT guaranteed */
+bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *namebuf, void *user_data=nullptr);
+/** order is NOT guaranteed. FIXME use maybe_buf */
 int walk_tree(const char *pathname, PathVisitor fn, void *user_data=nullptr);
 
 struct EntryList
 {
-    template<class T>
-    struct maybe_buf
-    {
-        T *buf;
-        size_t size;
-        size_t required_size;
-        maybe_buf() : buf(), size(), required_size() {}
-        maybe_buf(T *buf_, size_t size_) : buf(buf_), size(size_), required_size() {}
-        bool valid() const { return required_size <= size; }
-        maybe_buf consume(size_t num)
-        {
-            maybe_buf mb = *this;
-            mb.buf += num;
-            mb.size = num <= size ? size - num : 0;
-            mb.required_size = required_size + num;
-            return mb;
-        }
-    };
-
-    maybe_buf<char> arena;
-    maybe_buf<char*> names;
+    maybe_buf<char>  arena;   //!< arena where we write the file names
+    maybe_buf<char*> names;   //!< the names of the entries
 
 public:
 
@@ -354,7 +349,7 @@ public:
     }
 };
 /** order is NOT guaranteed. Not recursive - does NOT descend into subdirectories. */
-int list_entries(const char *pathname, EntryList *C4_RESTRICT entries, size_t max_scratch_size=2048);
+bool list_entries(const char *pathname, EntryList *C4_RESTRICT entries, maybe_buf<char> *scratch);
 
 
 //-----------------------------------------------------------------------------

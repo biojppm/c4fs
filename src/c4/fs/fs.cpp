@@ -365,22 +365,25 @@ char *cwd(char *buf, size_t sz)
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t namebuf_len, void *user_data)
+bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, void *user_data)
 {
     C4_CHECK(is_dir(pathname));
-    int exit_status = 0;
+    C4_CHECK((buf->buf == nullptr) == (buf->size == 0));
     csubstr base = to_csubstr(pathname);
-    substr namebuf(namebuf_, namebuf_len);
+    size_t base_size = (base.len + 1/*'/'*/) + 1/*'\0'*/;
+    substr namebuf(buf->buf, buf->size);
+    size_t maxlen = 0;
     C4_ASSERT(!namebuf.overlaps(base));
+    buf->required_size = base_size;
     VisitedFile vp;
     vp.user_data = user_data;
     vp.name = namebuf.str;
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
-    if(namebuf.len < base.len + 2 || namebuf_ == nullptr)
-        return ENAMETOOLONG;
-    memcpy(namebuf.str, base.str, base.len);
-    namebuf[base.len] = '/';
-    substr filenamebuf = namebuf.sub(base.len + 1);
+    if(buf->valid())
+    {
+        memcpy(namebuf.str, base.str, base.len);
+        namebuf[base.len] = '/';
+    }
     ::DIR *dir = opendir(pathname);
     C4_CHECK(dir);
     struct dirent *entry;
@@ -391,28 +394,31 @@ int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t na
         if(strcmp(entry->d_name, "..") == 0)
             continue;
         csubstr entry_name = to_csubstr(entry->d_name);
-        if(filenamebuf.len < entry_name.len + 1)
+        maxlen = entry_name.len > maxlen ? entry_name.len : maxlen;
+        buf->required_size = base_size + maxlen + 1;
+        if(buf->valid())
         {
-            exit_status = ENAMETOOLONG;
-            break;
+            substr after_slash = namebuf.sub(base.len + 1);
+            memcpy(after_slash.str, entry_name.str, entry_name.len);
+            after_slash[entry_name.len] = '\0';
+            vp.dirent_data = entry;
+            if(fn(vp) != 0)
+                break;
         }
-        memcpy(filenamebuf.str, entry_name.str, entry_name.len);
-        filenamebuf[entry_name.len] = '\0';
-        vp.dirent_data = entry;
-        if(fn(vp) != 0)
-            break;
     }
     closedir(dir);
 #else
-    if(namebuf.len < base.len + 4 || namebuf_ == nullptr)
-        return ENAMETOOLONG;
-    memcpy(namebuf.str, base.str, base.len);
-    memcpy(namebuf.str + base.len, "\\*\0", 3);
+    base_size = base.len + 4;
+    buf->required_size = base_size;
+    if(buf->valid())
+    {
+        memcpy(namebuf.str, base.str, base.len);
+        memcpy(namebuf.str + base.len, "\\*\0", 3);
+    }
     WIN32_FIND_DATAA ffd = {};
     HANDLE hFindFile = FindFirstFileA(namebuf.str, &ffd);
     C4_CHECK(hFindFile != INVALID_HANDLE_VALUE);
     namebuf[base.len] = '/';
-    substr filenamebuf = namebuf.sub(base.len + 1);
     vp.find_file_data = &ffd;
     while(FindNextFileA(hFindFile, &ffd))
     {
@@ -421,19 +427,20 @@ int walk_entries(const char *pathname, FileVisitor fn, char *namebuf_, size_t na
         if(!strcmp(ffd.cFileName, ".."))
             continue;
         csubstr entry_name = to_csubstr(ffd.cFileName);
-        if(filenamebuf.len < entry_name.len + 1)
+        maxlen = entry_name.len > maxlen ? entry_name.len : maxlen;
+        buf->required_size = base_size + maxlen + 1;
+        if(buf->valid())
         {
-            exit_status = ENAMETOOLONG;
-            break;
+            substr after_slash = namebuf.sub(base.len + 1);
+            memcpy(after_slash.str, entry_name.str, entry_name.len);
+            after_slash[entry_name.len] = '\0';
+            if(fn(vp) != 0)
+                break;
         }
-        memcpy(filenamebuf.str, entry_name.str, entry_name.len);
-        filenamebuf[entry_name.len] = '\0';
-        if(fn(vp) != 0)
-            break;
     }
     FindClose(hFindFile);
 #endif
-    return exit_status;
+    return buf->valid();
 }
 
 PathVisitor wtf; // fixme
@@ -554,21 +561,16 @@ int _list_entries_visitor(VisitedFile const& vf)
     return 0;
 }
 
-int list_entries(const char *pathname, EntryList *C4_RESTRICT entries, size_t max_scratch_size)
+bool list_entries(const char *pathname, EntryList *C4_RESTRICT entries, maybe_buf<char> *scratch)
 {
+    scratch->reset();
     entries->reset();
     _list_entries_workspace = *entries;
-    // use the 256 first arena bytes to write the temporary names in walk_entries()
-    size_t scratch_size = 256u;
-    int ret = 0;
-    do
-    {
-        _list_entries_workspace.arena = entries->arena.consume(scratch_size);
-        ret = walk_entries(pathname, _list_entries_visitor, entries->arena.buf, entries->arena.size);
-        scratch_size *= 2;
-    } while(ret == ENAMETOOLONG && scratch_size < max_scratch_size);
+    if(!walk_entries(pathname, _list_entries_visitor, scratch))
+        return false;
+    scratch->required_size = scratch->size;
     *entries = _list_entries_workspace;
-    return ret;
+    return entries->valid() && scratch->valid();
 }
 
 
