@@ -320,14 +320,17 @@ private:
         T *entry_list;
         size_t i;
         reference operator* () const { C4_CHECK(entry_list->valid() && i < entry_list->names.required_size); return (reference)entry_list->names.buf[i]; }
-        bool operator== (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); return i == that.i; }
-        bool operator!= (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); return i != that.i; }
-        bool operator<  (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); return i <  that.i; }
+        bool operator== (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i == that.i; }
+        bool operator!= (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i != that.i; }
+        bool operator>= (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i >= that.i; }
+        bool operator<= (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i <= that.i; }
+        bool operator<  (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i <  that.i; }
+        bool operator>  (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i >  that.i; }
         iterator_impl& operator++ () { ++i; return *this; }
         iterator_impl& operator-- () { C4_CHECK(i > 0); --i; return *this; }
         iterator_impl  operator+  (size_t adv) const { return {entry_list, i + adv}; }
-        iterator_impl  operator-  (size_t bck) const { C4_CHECK(i >= bck); return {entry_list, i - bck}; }
-        ssize_t operator- (iterator_impl that) const { C4_CHECK(that.entry_list == entry_list); C4_CHECK(i >= that.i); return ssize_t(i) - ssize_t(that.i); }
+        iterator_impl  operator-  (size_t bck) const { C4_ASSERT(i >= bck); return {entry_list, i - bck}; }
+        ssize_t operator- (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); C4_CHECK(i >= that.i); return ssize_t(i) - ssize_t(that.i); }
     };
 
 public:
