@@ -135,65 +135,67 @@ TEST_CASE("path_times")
 
 TEST_CASE("mkdir.basic")
 {
+    // setup
     if(dir_exists("c4fdx"))
-        CHECK(rmdir("c4fdx"));
-    SUBCASE("mkdir") {
-        CHECK_FALSE(dir_exists("c4fdx"));
-        CHECK_FALSE(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        mkdir("c4fdx");
-        CHECK(dir_exists("c4fdx"));
-        CHECK_FALSE(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        mkdir("c4fdx/a");
-        CHECK(dir_exists("c4fdx"));
-        CHECK(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        mkdir("c4fdx/a/b");
-        CHECK(dir_exists("c4fdx"));
-        CHECK(dir_exists("c4fdx/a"));
-        CHECK(dir_exists("c4fdx/a/b"));
-    }
-    SUBCASE("rmdir") {
-        rmdir("c4fdx/a/b");
-        CHECK(dir_exists("c4fdx"));
-        CHECK(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        rmdir("c4fdx/a");
-        CHECK(dir_exists("c4fdx"));
-        CHECK_FALSE(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        rmdir("c4fdx");
-        CHECK_FALSE(dir_exists("c4fdx"));
-        CHECK_FALSE(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-    }
+        CHECK_EQ(rmtree("c4fdx"), 0);
+    CHECK_FALSE(dir_exists("c4fdx"));
+    CHECK_FALSE(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
+    // mkdir
+    CHECK_EQ(mkdir("c4fdx"), 0);
+    CHECK(dir_exists("c4fdx"));
+    CHECK_FALSE(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
+    CHECK_EQ(mkdir("c4fdx/a"), 0);
+    CHECK(dir_exists("c4fdx"));
+    CHECK(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
+    CHECK_EQ(mkdir("c4fdx/a/b"), 0);
+    CHECK(dir_exists("c4fdx"));
+    CHECK(dir_exists("c4fdx/a"));
+    CHECK(dir_exists("c4fdx/a/b"));
+    CHECK_EQ(rmtree("c4fdx"), 0);
+}
+
+TEST_CASE("rmdir.basic")
+{
+    // setup
+    if(dir_exists("c4fdx"))
+        CHECK_EQ(rmtree("c4fdx"), 0);
+    CHECK_EQ(mkdir("c4fdx"), 0);
+    CHECK_EQ(mkdir("c4fdx/a"), 0);
+    CHECK_EQ(mkdir("c4fdx/a/b"), 0);
+    CHECK_EQ(rmdir("c4fdx/a/b"), 0);
+    // rmdir
+    CHECK(dir_exists("c4fdx"));
+    CHECK(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
+    CHECK_EQ(rmdir("c4fdx/a"), 0);
+    CHECK(dir_exists("c4fdx"));
+    CHECK_FALSE(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
+    CHECK_EQ(rmdir("c4fdx"), 0);
+    CHECK_FALSE(dir_exists("c4fdx"));
+    CHECK_FALSE(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
 }
 
 TEST_CASE("mkdirs.basic")
 {
-    SUBCASE("mkdirs") {
-        CHECK_FALSE(dir_exists("c4fdx"));
-        CHECK_FALSE(dir_exists("c4fdx/a"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        CHECK_FALSE(dir_exists("c4fdx/a/b/c"));
-        char buf[32] = "c4fdx/a/b/c\0";
-        mkdirs(buf);
-        CHECK(dir_exists("c4fdx"));
-        CHECK(dir_exists("c4fdx/a"));
-        CHECK(dir_exists("c4fdx/a/b"));
-        CHECK(dir_exists("c4fdx/a/b/c"));
-    }
-    SUBCASE("rmdir") {
-        rmdir("c4fdx/a/b/c");
-        CHECK_FALSE(dir_exists("c4fdx/a/b/c"));
-        rmdir("c4fdx/a/b");
-        CHECK_FALSE(dir_exists("c4fdx/a/b"));
-        rmdir("c4fdx/a");
-        CHECK_FALSE(dir_exists("c4fdx/a"));
-        rmdir("c4fdx");
-        CHECK_FALSE(dir_exists("c4fdx"));
-    }
+    if(dir_exists("c4fdx"))
+        CHECK_EQ(rmtree("c4fdx"), 0);
+    CHECK_FALSE(dir_exists("c4fdx"));
+    CHECK_FALSE(dir_exists("c4fdx/a"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b"));
+    CHECK_FALSE(dir_exists("c4fdx/a/b/c"));
+    char buf[32] = "c4fdx/a/b/c\0";
+    mkdirs(buf);
+    CHECK(dir_exists("c4fdx"));
+    CHECK(dir_exists("c4fdx/a"));
+    CHECK(dir_exists("c4fdx/a/b"));
+    CHECK(dir_exists("c4fdx/a/b/c"));
+    CHECK_EQ(rmtree("c4fdx"), 0);
+    CHECK_FALSE(dir_exists("c4fdx"));
 }
 
 TEST_CASE("rmfile")
@@ -217,7 +219,7 @@ TEST_CASE("rmfile")
 const char * _make_tree()
 {
     if(dir_exists("c4fdx"))
-        CHECK(rmdir("c4fdx"));
+        CHECK_EQ(rmtree("c4fdx"), 0);
     auto fpcon = [](const char* path){
         file_put_contents(path, to_csubstr(path));
         CHECK(file_exists(path));
@@ -264,7 +266,7 @@ const char * _make_tree()
 TEST_CASE("rmtree")
 {
     if(dir_exists("c4fdx"))
-        rmtree("c4fdx");
+        CHECK_EQ(rmtree("c4fdx"), 0);
     SUBCASE("existing")
     {
         CHECK(!dir_exists("c4fdx"));
@@ -302,9 +304,9 @@ TEST_CASE("walk_entries")
 {
     const std::string cwd_orig = cwd<std::string>();
     constexpr const char dirname[] = "c4fdx";
-    mkdir(dirname);
+    CHECK_EQ(mkdir(dirname), 0);
     file_put_contents("c4fdx/file0", csubstr("asdasdasd"));
-    file_put_contents("c4fdx/file1", csubstr("asdasdasd"));
+    file_put_contents("c4fdx/file1", csubstr("dsfgsdfds"));
     SUBCASE("empty_name_buffer")
     {
         dir_count = file_count = 0;
@@ -378,7 +380,7 @@ TEST_CASE("list_entries")
         CHECK(!ok);
         CHECK_EQ(el.names.required_size, 0u);
         CHECK_GE(el.arena.required_size, 0u);
-        CHECK_GE(scratch.required_size, strlen("c4fdx/dir/file00"));
+        CHECK_GT(scratch.required_size, strlen("c4fdx/dir/"));
         CHECK(el.arena.valid());
         CHECK(el.names.valid());
         CHECK(el.valid());
