@@ -410,11 +410,17 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
 #else
     base_size = base.len + 4;
     buf->required_size = base_size;
-    if(buf->valid())
+    if(!buf->valid())
     {
-        memcpy(namebuf.str, base.str, base.len);
-        memcpy(namebuf.str + base.len, "\\*\0", 3);
+        // if the buffer cannot accomodate the base_size,
+        // we cannot open the directory to iterate.
+        // To be safer, let's require 64 characters for appending
+        // the filenames.
+        buf->required_size += 64u;
+        return false;
     }
+    memcpy(namebuf.str, base.str, base.len);
+    memcpy(namebuf.str + base.len, "\\*\0", 3);
     WIN32_FIND_DATAA ffd = {};
     HANDLE hFindFile = FindFirstFileA(namebuf.str, &ffd);
     C4_CHECK(hFindFile != INVALID_HANDLE_VALUE);
