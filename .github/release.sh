@@ -1,6 +1,10 @@
 #!/bin/bash
 
 
+# useful to iterate when fixing the release:
+# ver=0.2.1 ; ( set -x ; git tag -d v$ver ; git push origin :v$ver ) ; (set -x ; set -e ; tbump --only-patch --non-interactive $ver ; git add -u ; git commit --amend --no-edit ; git tag --annotate --message "v$ver" "v$ver" ; git push -f --tags origin )
+
+
 function c4_release_create()
 {
     ( \
@@ -43,8 +47,6 @@ function c4_release_commit()
       git add -u ; \
       git commit -m $tag ; \
       git tag --annotate --message $tag $tag ; \
-      git push origin $branch ; \
-      git push --tags origin $tag \
       )
 }
 
@@ -58,8 +60,6 @@ function c4_release_amend()
       git add -u ; \
       git commit --amend -m $tag ; \
       git tag --annotate --message $tag $tag ; \
-      git push -f origin $branch ; \
-      git push -f --tags origin $tag \
     )
 }
 
@@ -73,6 +73,30 @@ function c4_release_delete()
     )
 }
 
+function c4_release_push()
+{
+    ( \
+      set -euxo pipefail ; \
+      ver=$(_c4_validate_ver $1) ; \
+      branch=${2:-$(git rev-parse --abbrev-ref HEAD)} ; \
+      tag=v$ver ; \
+      git push origin $branch ; \
+      git push --tags origin $tag \
+      )
+}
+
+function c4_release_force_push()
+{
+    ( \
+      set -euxo pipefail ; \
+      ver=$(_c4_validate_ver $1) ; \
+      branch=${2:-$(git rev-parse --abbrev-ref HEAD)} ; \
+      tag=v$ver ; \
+      git push -f origin $branch ; \
+      git push -f --tags origin $tag \
+    )
+}
+
 function _c4_validate_ver()
 {
     ver=$1
@@ -82,8 +106,12 @@ function _c4_validate_ver()
     ver=$(echo $ver | sed "s:v\(.*\):\1:")
     #sver=$(echo $ver | sed "s:\([0-9]*\.[0-9]*\..[0-9]*\).*:\1:")
     if [ ! -f changelog/$ver.md ] ; then \
-        echo "ERROR: could not find changelog/$ver.md"
-        exit 1
+        if [ -f changelog/current.md ] ; then
+            git mv changelog/current.md changelog/$ver.md
+        else
+            echo "ERROR: could not find changelog/$ver.md"
+            exit 1
+        fi
     fi
     echo $ver
 }
