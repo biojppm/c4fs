@@ -534,6 +534,7 @@ TEST_CASE("file_get_contents.std_vector_char")
     CHECK_EQ(to_csubstr(s), test_contents);
 }
 
+
 } // namespace fs
 } // namespace c4
 

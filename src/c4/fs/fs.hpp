@@ -7,6 +7,7 @@
 #include <string.h>
 #include <iterator>
 #include <algorithm>
+#include <random>
 
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
 struct dirent;
@@ -146,17 +147,59 @@ CharContainer cwd()
 
 /** @{ */
 
+/** the default pattern */
 constexpr const char default_tmppat[] = "_c4fs_tmpname_XXXXXXXX.tmp";
+/** the default character to look for */
 constexpr const char default_tmpchar = 'X';
+
+/** create a temporary name from a format. The format is scanned for
+ * appearances of "XX"; each appearance of "XX" will be substituted by
+ * an hexadecimal byte (ie 00...ff).
+ * output to a string, never writing beyond @p bufsz
+ * @param buf the buffer - must be larger than @p fmt
+ * @param bufsz the size of the buffer - must be larger than strlen(fmt) */
+template<class RandomEngine>
+const char * tmpnam(RandomEngine &random_engine, char *buf_, size_t bufsz, const char *fmt_=default_tmppat, char subchar=default_tmpchar)
+{
+    const char lookup[3] = {subchar, subchar, '\0'};
+    c4::csubstr fmt = to_csubstr(fmt_);
+    c4::substr buf(buf_, fmt.len+1);
+    C4_CHECK(bufsz > fmt.len);
+    C4_CHECK(fmt.find(lookup) != csubstr::npos);
+    memcpy(buf_, fmt.str, fmt.len); // copy everything
+    buf_[fmt.len] = '\0';
+    constexpr static const char hexchars[] = "0123456789abcdef";
+    std::uniform_int_distribution<int> rand_dist(0, 255); // N4659 29.6.1.1 [rand.req.genl]/1e requires one of short, int, long, long long, unsigned short, unsigned int, unsigned long, or unsigned long long
+    size_t pos = 0;
+    while((pos = buf.find(lookup, pos)) != csubstr::npos)
+    {
+        int num = rand_dist(random_engine);
+        buf[pos++] = hexchars[ num       & 0xf];
+        buf[pos++] = hexchars[(num >> 4) & 0xf];
+    }
+    return buf_;
+}
 
 /** create a temporary name from a format.
  * output to a string, never writing beyond @p bufsz
- * @param the buffer - must be larger than @p fmt
- * @param the size of the buffer - must be higher than strlen(fmt) */
+ * @param buf the buffer - must be larger than @p fmt
+ * @param bufsz the size of the buffer - must be larger than strlen(fmt) */
 const char * tmpnam(char *buf, size_t bufsz, const char *fmt=default_tmppat, char subchar=default_tmpchar);
 
 /** create a temporary name from a format.
- * a convenience wrapper for use with containers */
+ * a convenience wrapper for use with existing containers */
+template<class RandomEngine, class CharContainer>
+const char * tmpnam(RandomEngine &random_engine, CharContainer *buf, const char *fmt=default_tmppat, char subchar=default_tmpchar)
+{
+    size_t fmtsz = strlen(fmt);
+    buf->resize(fmtsz + 1);
+    tmpnam(random_engine, &(*buf)[0], buf->size(), fmt, subchar);
+    (*buf)[fmtsz] = '\0';
+    buf->resize(fmtsz);
+    return &(*buf)[0];
+}
+/** create a temporary name from a format.
+ * a convenience wrapper for use with existing containers */
 template<class CharContainer>
 const char * tmpnam(CharContainer *buf, const char *fmt=default_tmppat, char subchar=default_tmpchar)
 {
@@ -168,6 +211,15 @@ const char * tmpnam(CharContainer *buf, const char *fmt=default_tmppat, char sub
     return &(*buf)[0];
 }
 
+/** create a temporary name from a format.
+ * a convenience wrapper for use with containers */
+template<class RandomEngine, class CharContainer>
+CharContainer tmpnam(RandomEngine &random_engine, const char *fmt=default_tmppat, char subchar=default_tmpchar)
+{
+    CharContainer c;
+    tmpnam(random_engine, &c, fmt, subchar);
+    return c;
+}
 /** create a temporary name from a format.
  * a convenience wrapper for use with containers */
 template<class CharContainer>
