@@ -619,7 +619,7 @@ size_t file_size(const char *filename, const char *access)
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     ::fseek(fp, 0, SEEK_END);
     size_t fs = static_cast<size_t>(::ftell(fp));
-    ::rewind(fp);
+    C4_CHECK(::fclose(fp) == 0);
     return fs;
 }
 
@@ -632,10 +632,13 @@ size_t file_get_contents(const char *filename, char *buf, size_t sz, const char*
     ::rewind(fp);
     if(fs <= sz && buf != nullptr)
     {
-        size_t ret = ::fread(buf, 1, fs, fp);
-        C4_CHECK(ret == fs);
+        if(fs != ::fread(buf, 1, fs, fp))
+        {
+            ::fclose(fp);
+            C4_ERROR("failed to read");
+        }
     }
-    ::fclose(fp);
+    C4_CHECK(::fclose(fp) == 0);
     return fs;
 }
 
@@ -643,8 +646,12 @@ void file_put_contents(const char *filename, const char *buf, size_t sz, const c
 {
     ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file");
-    ::fwrite(buf, 1, sz, fp);
-    ::fclose(fp);
+    if(sz != ::fwrite(buf, 1, sz, fp))
+    {
+        ::fclose(fp);
+        C4_ERROR("failed to write");
+    }
+    C4_CHECK(::fclose(fp) == 0);
 }
 
 
@@ -657,6 +664,7 @@ ScopedTmpFile::ScopedTmpFile(const char* name_pattern, const char *access, bool 
     C4_CHECK(strlen(name_pattern) < sizeof(m_name));
     tmpnam(m_name, sizeof(m_name), name_pattern);
     m_file = ::fopen(m_name, access);
+    C4_CHECK(m_file != nullptr);
     m_delete = delete_after_use;
 }
 
