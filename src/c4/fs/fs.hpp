@@ -1,8 +1,8 @@
 #ifndef _c4_FS_HPP_
 #define _c4_FS_HPP_
 
-#include <c4/error.hpp>
 #include <c4/fs/export.hpp>
+#include <c4/error.hpp>
 #include <stdio.h>
 #include <string.h>
 #include <iterator>
@@ -16,8 +16,6 @@ struct FTW;
 struct _WIN32_FIND_DATAA;
 typedef struct _WIN32_FIND_DATAA WIN32_FIND_DATAA;
 #endif
-
-#include "c4/c4_push.hpp"
 
 namespace c4 {
 namespace fs {
@@ -437,7 +435,5 @@ public:
 
 } // namespace fs
 } // namespace c4
-
-#include "c4/c4_pop.hpp"
 
 #endif /* _c4_FS_HPP_ */

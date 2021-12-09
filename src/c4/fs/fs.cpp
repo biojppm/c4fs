@@ -1,7 +1,6 @@
 #include "c4/fs/fs.hpp"
 
 #include <c4/platform.hpp>
-
 #include <c4/substr.hpp>
 #include <c4/charconv.hpp>
 
