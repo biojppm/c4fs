@@ -593,7 +593,7 @@ const char* tmpnam(char *buf_, size_t bufsz, const char *fmt_, char subchar)
     memcpy(buf_, fmt.str, fmt.len);
     buf_[fmt.len] = '\0';
 
-    constexpr static const char hexchars[] = "01234567890abcdef";
+    constexpr static const char hexchars[] = "0123456789abcdef";
     thread_local static std::random_device rand_eng;
     std::uniform_int_distribution<int> rand_dist(0, 255); // N4659 29.6.1.1 [rand.req.genl]/1e requires one of short, int, long, long long, unsigned short, unsigned int, unsigned long, or unsigned long long
 
