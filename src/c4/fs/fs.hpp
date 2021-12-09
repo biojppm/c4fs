@@ -3,6 +3,7 @@
 
 #include <c4/fs/export.hpp>
 #include <c4/error.hpp>
+#include <c4/substr.hpp>
 #include <stdio.h>
 #include <string.h>
 #include <iterator>
@@ -162,8 +163,8 @@ template<class RandomEngine>
 const char * tmpnam(RandomEngine &random_engine, char *buf_, size_t bufsz, const char *fmt_=default_tmppat, char subchar=default_tmpchar)
 {
     const char lookup[3] = {subchar, subchar, '\0'};
-    c4::csubstr fmt = to_csubstr(fmt_);
-    c4::substr buf(buf_, fmt.len+1);
+    csubstr fmt = to_csubstr(fmt_);
+    substr buf(buf_, fmt.len+1);
     C4_CHECK(bufsz > fmt.len);
     C4_CHECK(fmt.find(lookup) != csubstr::npos);
     memcpy(buf_, fmt.str, fmt.len); // copy everything
