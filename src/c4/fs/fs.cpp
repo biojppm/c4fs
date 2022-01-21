@@ -4,7 +4,7 @@
 #include <c4/substr.hpp>
 #include <c4/charconv.hpp>
 
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -14,7 +14,7 @@
 
 #include "c4/c4_push.hpp"
 
-#ifdef C4_WIN
+#if defined(C4_WIN) || defined(__MINGW32__)
 #   include <windef.h>
 #   include <minwindef.h>
 #   include <direct.h>
@@ -35,7 +35,7 @@ bool _is_escape(size_t char_pos, const char *pathname, size_t sz)
     C4_UNUSED(sz);
     C4_ASSERT(char_pos < sz);
     const char c = pathname[char_pos];
-#ifdef C4_WIN
+#if defined(C4_WIN)
     return c == '^';
 #else
     return c == '\\';
@@ -44,7 +44,7 @@ bool _is_escape(size_t char_pos, const char *pathname, size_t sz)
 
 int _exec_stat(const char *pathname, struct stat *s)
 {
-#ifdef C4_WIN
+#if defined(C4_WIN) || defined(__MINGW32__)
     /* If path contains the location of a directory, it cannot contain
      * a trailing backslash. If it does, -1 will be returned and errno
      * will be set to ENOENT. */
@@ -64,7 +64,7 @@ int _exec_stat(const char *pathname, struct stat *s)
 
 PathType_e _path_type(struct stat *C4_RESTRICT s)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
 #   if defined(C4_WIN)
 #      define _c4is(what) (s->st_mode & _S_IF##what)
 #   else
@@ -96,7 +96,7 @@ int _exec_mkdir(const char *dirname)
 {
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return ::mkdir(dirname, 0755);
-#elif defined(C4_WIN) || defined(C4_XBOX)
+#elif defined(C4_WIN) || defined(C4_XBOX) || defined(__MINGW32__)
     return ::_mkdir(dirname);
 #else
     C4_NOT_IMPLEMENTED();
@@ -112,7 +112,7 @@ bool is_sep(size_t char_pos, const char *pathname, size_t sz)
     C4_ASSERT(char_pos < sz);
     const char c = pathname[char_pos];
     const char prev = char_pos > 0 ? pathname[char_pos - 1] : '\0';
-#ifdef C4_WIN
+#if defined(C4_WIN) && !defined(__MINGW32__)
     if(c != '/' || c == '\\')
         return false;
     if(prev)
@@ -148,7 +148,7 @@ bool to_unix_sep(char *pathname, size_t sz)
 
 bool path_exists(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     return _exec_stat(pathname, &s) == 0;
 #else
@@ -160,7 +160,7 @@ bool path_exists(const char *pathname)
 
 bool file_exists(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     auto ret = _exec_stat(pathname, &s);
     if(ret != 0)
@@ -176,7 +176,7 @@ bool file_exists(const char *pathname)
 
 bool dir_exists(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     auto ret = _exec_stat(pathname, &s);
     if(ret != 0)
@@ -203,7 +203,7 @@ PathType_e path_type(const char *pathname)
 path_times times(const char *pathname)
 {
     path_times t;
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     _exec_stat(pathname, &s);
     using ttype = decltype(t.creation);
@@ -218,7 +218,7 @@ path_times times(const char *pathname)
 
 uint64_t ctime(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     _exec_stat(pathname, &s);
     return static_cast<uint64_t>(s.st_ctime);
@@ -229,7 +229,7 @@ uint64_t ctime(const char *pathname)
 
 uint64_t mtime(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     _exec_stat(pathname, &s);
     return static_cast<uint64_t>(s.st_mtime);
@@ -240,7 +240,7 @@ uint64_t mtime(const char *pathname)
 
 uint64_t atime(const char *pathname)
 {
-#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_WIN) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     struct stat s;
     _exec_stat(pathname, &s);
     return static_cast<uint64_t>(s.st_atime);
@@ -256,7 +256,7 @@ uint64_t atime(const char *pathname)
 
 int rmdir(const char *dirname)
 {
-#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
     return ::rmdir(dirname);
 #elif defined(C4_WIN) || defined(C4_XBOX)
     return ::_rmdir(dirname);
@@ -315,7 +315,7 @@ int _unlink_cb(const char *fpath, const struct stat *, int , struct FTW *)
 {
     return ::remove(fpath);
 }
-#elif defined(C4_WIN)
+#elif defined(C4_WIN) || defined(__MINGW32__)
 int _rmtree_visitor(VisitedPath const& p)
 {
     if((p.find_file_data && p.find_file_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || is_dir(p.name))
@@ -329,7 +329,7 @@ int rmtree(const char *path)
 {
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return nftw(path, _unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
-#elif defined(C4_WIN)
+#elif defined(C4_WIN) || defined(__MINGW32__)
     if(!dir_exists(path))
         return ENOENT;
     return walk_tree(path, _rmtree_visitor);
@@ -349,7 +349,7 @@ char *cwd(char *buf, size_t sz)
     C4_ASSERT(sz > 0);
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     return ::getcwd(buf, sz);
-#elif defined(C4_WIN)
+#elif defined(C4_WIN) || defined(__MINGW32__)
     return ::getcwd(buf, (int)sz);
 #else
     C4_NOT_IMPLEMENTED();
@@ -404,7 +404,7 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
         }
     }
     closedir(dir);
-#else
+#elif defined(C4_WIN) || defined(__MINGW32__)
     base_size = base.len + 4;
     buf->required_size = base_size;
     if(!buf->valid())
@@ -442,6 +442,8 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
         }
     }
     FindClose(hFindFile);
+#else
+#error unknown platform
 #endif
     return buf->valid();
 }
@@ -458,7 +460,7 @@ int _path_visitor_adapter(const char *name, const struct stat *stat_data, int ft
     vp.ftw_data = ftw_data;
     return wtf(vp);
 }
-#elif defined(C4_WIN)
+#elif defined(C4_WIN) || defined(__MINGW32__)
 int _walk_tree(PathVisitor fn, void *user_data, substr namebuf, size_t namelen)
 {
     int exit_status = 0;
@@ -513,7 +515,7 @@ int walk_tree(const char *pathname, PathVisitor fn, void *user_data)
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
     (void)user_data;
     return nftw(pathname, _path_visitor_adapter, 64, FTW_PHYS);
-#elif defined(C4_WIN)
+#elif defined(C4_WIN) || defined(__MINGW32__)
     substr namebuf;
     namebuf.len = MAX_PATH;
     csubstr base = to_csubstr(pathname);
