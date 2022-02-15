@@ -169,14 +169,14 @@ const char * tmpnam(RandomEngine &random_engine, char *buf_, size_t bufsz, const
     C4_CHECK(fmt.find(lookup) != csubstr::npos);
     memcpy(buf_, fmt.str, fmt.len); // copy everything
     buf_[fmt.len] = '\0';
-    constexpr static const char hexchars[] = "0123456789abcdef";
+    constexpr static const char hexchars__[] = "0123456789abcdef";
     std::uniform_int_distribution<int> rand_dist(0, 255); // N4659 29.6.1.1 [rand.req.genl]/1e requires one of short, int, long, long long, unsigned short, unsigned int, unsigned long, or unsigned long long
     size_t pos = 0;
     while((pos = buf.find(lookup, pos)) != csubstr::npos)
     {
         int num = rand_dist(random_engine);
-        buf[pos++] = hexchars[ num       & 0xf];
-        buf[pos++] = hexchars[(num >> 4) & 0xf];
+        buf[pos++] = hexchars__[ num       & 0xf];
+        buf[pos++] = hexchars__[(num >> 4) & 0xf];
     }
     return buf_;
 }
