@@ -597,7 +597,7 @@ const char* tmpnam(char *buf_, size_t bufsz, const char *fmt_, char subchar)
 size_t file_size(const char *filename, const char *access)
 {
     ::FILE *fp = ::fopen(filename, access);
-    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    C4_CHECK_MSG(fp != nullptr, "could not open file %s", filename);
     ::fseek(fp, 0, SEEK_END);
     size_t fs = static_cast<size_t>(::ftell(fp));
     C4_CHECK(::fclose(fp) == 0);
@@ -607,7 +607,7 @@ size_t file_size(const char *filename, const char *access)
 size_t file_get_contents(const char *filename, char *buf, size_t sz, const char* access)
 {
     ::FILE *fp = ::fopen(filename, access);
-    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    C4_CHECK_MSG(fp != nullptr, "could not open file %s", filename);
     ::fseek(fp, 0, SEEK_END);
     size_t fs = static_cast<size_t>(::ftell(fp));
     ::rewind(fp);
