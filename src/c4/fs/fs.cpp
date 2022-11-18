@@ -6,6 +6,7 @@
 
 #if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS) || defined(__MINGW32__)
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <ftw.h>
@@ -336,6 +337,81 @@ int rmtree(const char *path)
 #else
     C4_NOT_IMPLEMENTED();
     return 1;
+#endif
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+void copy_file(const char *file, const char *dst)
+{
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    // https://stackoverflow.com/questions/2180079/how-can-i-copy-a-file-on-unix-using-c
+    int fd_from = open(file, O_RDONLY);
+    C4_CHECK(fd_from >= 0);
+
+    int fd_to = open(dst, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (fd_to < 0)
+        goto out_error;
+
+    ssize_t nread;
+    {
+        char buf[4096];
+        while (nread = read(fd_from, buf, sizeof buf), nread > 0)
+        {
+            char *out_ptr = buf;
+            ssize_t nwritten;
+
+            do {
+                nwritten = write(fd_to, out_ptr, (size_t)nread);
+                if (nwritten >= 0)
+                {
+                    nread -= nwritten;
+                    out_ptr += nwritten;
+                }
+                else if (errno != EINTR)
+                {
+                    goto out_error;
+                }
+            } while (nread > 0);
+        }
+    }
+
+    if (nread == 0)
+    {
+        if (close(fd_to) < 0)
+        {
+            fd_to = -1;
+            goto out_error;
+        }
+        close(fd_from);
+        return; /* Success! */
+    }
+
+  out_error:
+    C4_ERROR("i/o error");
+    close(fd_from);
+    if (fd_to >= 0)
+        close(fd_to);
+    return;
+#elif defined(C4_WIN) || defined(__MINGW32__)
+    C4_CHECK(CopyFile(file, dst, /*failifexists*/true));
+#else
+    C4_NOT_IMPLEMENTED();
+#endif
+}
+
+void move_file(const char *file, const char *dst)
+{
+    C4_CHECK(!file_exists(dst));
+#if defined(C4_POSIX) || defined(C4_MACOS) || defined(C4_IOS)
+    C4_CHECK(rename(file, dst) != -1);
+#elif defined(C4_WIN) || defined(__MINGW32__)
+    C4_CHECK(rename(file, dst) == 0);
+#else
+    C4_NOT_IMPLEMENTED();
 #endif
 }
 

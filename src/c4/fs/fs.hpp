@@ -95,9 +95,7 @@ int rmtree(const char *pathname);
 
 /** @{ */
 void copy_file(const char *file, const char *dst);
-void copy_tree(const char *tree, const char *dst);
 void move_file(const char *file, const char *dst);
-void move_tree(const char *tree, const char *dst);
 /** @} */
 
 
