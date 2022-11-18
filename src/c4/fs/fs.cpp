@@ -17,6 +17,7 @@
 
 #if defined(C4_WIN) || defined(__MINGW32__)
 #   include <windef.h>
+#   include <winbase.h>
 #   include <minwindef.h>
 #   include <direct.h>
 #   include <fileapi.h>
