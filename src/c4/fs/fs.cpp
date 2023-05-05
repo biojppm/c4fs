@@ -29,6 +29,8 @@
 namespace c4 {
 namespace fs {
 
+C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wold-style-cast")
+
 namespace /*anon*/ {
 
 /** @todo make this more complete */
@@ -765,6 +767,8 @@ const char* ScopedTmpFile::full_path(char *buf, size_t sz) const
     buf[cwdlen + 1 + namelen] = '\0';
     return buf;
 }
+
+C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 } // namespace fs
 } // namespace c4

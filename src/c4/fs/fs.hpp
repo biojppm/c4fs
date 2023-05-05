@@ -22,6 +22,7 @@ typedef struct _WIN32_FIND_DATAA WIN32_FIND_DATAA;
 namespace c4 {
 namespace fs {
 
+C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wold-style-cast")
 
 typedef enum {
     REGFILE, ///< regular file
@@ -368,7 +369,13 @@ private:
         using pointer = const char**;
         T *entry_list;
         size_t i;
-        reference operator* () const { C4_CHECK(entry_list->valid() && i < entry_list->names.required_size); return (reference)entry_list->names.buf[i]; }
+        reference operator* () const
+        {
+            C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wcast-qual")
+            C4_CHECK(entry_list->valid() && i < entry_list->names.required_size);
+            return (reference)entry_list->names.buf[i];
+            C4_SUPPRESS_WARNING_GCC_CLANG_POP
+        }
         bool operator== (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i == that.i; }
         bool operator!= (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i != that.i; }
         bool operator>= (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i >= that.i; }
@@ -484,6 +491,8 @@ public:
     }
 
 };
+
+C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 } // namespace fs
 } // namespace c4
