@@ -368,7 +368,7 @@ void copy_file(const char *file, const char *dst)
             ssize_t nwritten;
 
             do {
-                nwritten = write(fd_to, out_ptr, (size_t)nread);
+                nwritten = write(fd_to, out_ptr, static_cast<size_t>(nread));
                 if (nwritten >= 0)
                 {
                     nread -= nwritten;

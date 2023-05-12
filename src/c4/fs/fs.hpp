@@ -371,9 +371,11 @@ private:
         size_t i;
         reference operator* () const
         {
-            C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wcast-qual")
+            C4_SUPPRESS_WARNING_GCC_CLANG_PUSH
+            C4_SUPPRESS_WARNING_GCC_CLANG("-Wold-style-cast")
+            C4_SUPPRESS_WARNING_GCC_CLANG("-Wcast-qual")
             C4_CHECK(entry_list->valid() && i < entry_list->names.required_size);
-            return (reference)entry_list->names.buf[i];
+            return (reference)(entry_list->names.buf[i]);
             C4_SUPPRESS_WARNING_GCC_CLANG_POP
         }
         bool operator== (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); return i == that.i; }
