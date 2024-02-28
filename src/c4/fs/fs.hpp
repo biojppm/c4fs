@@ -389,6 +389,7 @@ private:
         iterator_impl  operator+  (size_t adv) const { return {entry_list, i + adv}; }
         iterator_impl  operator-  (size_t bck) const { C4_ASSERT(i >= bck); return {entry_list, i - bck}; }
         iterator_impl& operator+= (size_t adv) { i += adv; return *this; }
+        iterator_impl& operator-= (size_t adv) { i -= adv; return *this; }
         ssize_t operator- (iterator_impl that) const { C4_ASSERT(that.entry_list == entry_list); C4_CHECK(i >= that.i); return ssize_t(i) - ssize_t(that.i); }
     };
 
