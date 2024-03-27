@@ -361,8 +361,13 @@ void copy_file(const char *file, const char *dst)
 
     ssize_t nread;
     {
+        C4_SUPPRESS_WARNING_GCC_PUSH
+        #if defined(__GNUC__) && __GNUC__ > 8
+        C4_SUPPRESS_WARNING_GCC("-Wanalyzer-fd-use-without-check") // it's checked above!
+        #endif
         char buf[4096];
         while (nread = read(fd_from, buf, sizeof buf), nread > 0)
+        C4_SUPPRESS_WARNING_GCC_POP
         {
             char *out_ptr = buf;
             ssize_t nwritten;
@@ -460,10 +465,16 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
         memcpy(namebuf.str, base.str, base.len);
         namebuf[base.len] = '/';
     }
+    C4_SUPPRESS_WARNING_GCC_PUSH
+    #if defined(__GNUC__) && __GNUC__ > 8
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-malloc-leak")
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-null-argument")
+    #endif
     ::DIR *dir = opendir(pathname);
     C4_CHECK(dir);
     struct dirent *entry;
     while((entry = readdir(dir)) != nullptr)
+    C4_SUPPRESS_WARNING_GCC_POP
     {
         if(strcmp(entry->d_name, ".") == 0)
             continue;
@@ -677,7 +688,12 @@ size_t file_size(const char *filename, const char *access)
 {
     ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file %s", filename);
+    C4_SUPPRESS_WARNING_GCC_PUSH
+    #if defined(__GNUC__) && __GNUC__ > 8
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-null-argument")
+    #endif
     ::fseek(fp, 0, SEEK_END);
+    C4_SUPPRESS_WARNING_GCC_POP
     size_t fs = static_cast<size_t>(::ftell(fp));
     C4_CHECK(::fclose(fp) == 0);
     return fs;
@@ -685,10 +701,16 @@ size_t file_size(const char *filename, const char *access)
 
 size_t file_get_contents(const char *filename, char *buf, size_t sz, const char* access)
 {
+    C4_SUPPRESS_WARNING_GCC_PUSH
+    #if defined(__GNUC__) && __GNUC__ > 8
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-null-argument")
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-double-fclose")
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-double-free")
+    #endif
     ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file %s", filename);
     ::fseek(fp, 0, SEEK_END);
-    size_t fs = static_cast<size_t>(::ftell(fp));
+    const size_t fs = static_cast<size_t>(::ftell(fp));
     ::rewind(fp);
     if(fs <= sz && buf != nullptr)
     {
@@ -699,11 +721,18 @@ size_t file_get_contents(const char *filename, char *buf, size_t sz, const char*
         }
     }
     C4_CHECK(::fclose(fp) == 0);
+    C4_SUPPRESS_WARNING_GCC_POP
     return fs;
 }
 
 void file_put_contents(const char *filename, const char *buf, size_t sz, const char* access)
 {
+    C4_SUPPRESS_WARNING_GCC_PUSH
+    #if defined(__GNUC__) && __GNUC__ > 8
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-null-argument")
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-double-fclose")
+    C4_SUPPRESS_WARNING_GCC("-Wanalyzer-double-free")
+    #endif
     ::FILE *fp = ::fopen(filename, access);
     C4_CHECK_MSG(fp != nullptr, "could not open file");
     if(sz != ::fwrite(buf, 1, sz, fp))
@@ -712,6 +741,7 @@ void file_put_contents(const char *filename, const char *buf, size_t sz, const c
         C4_ERROR("failed to write");
     }
     C4_CHECK(::fclose(fp) == 0);
+    C4_SUPPRESS_WARNING_GCC_POP
 }
 
 
