@@ -307,6 +307,8 @@ TEST_CASE("walk_entries")
     CHECK_EQ(mkdir(dirname), 0);
     file_put_contents("c4fdx/file0", csubstr("asdasdasd"));
     file_put_contents("c4fdx/file1", csubstr("dsfgsdfds"));
+    CHECK(file_exists("c4fdx/file0"));
+    CHECK(file_exists("c4fdx/file1"));
     SUBCASE("empty_name_buffer")
     {
         dir_count = file_count = 0;
@@ -330,6 +332,8 @@ TEST_CASE("walk_entries")
     {
         char buf_[100];
         maybe_buf<char> buf(buf_);
+        CHECK_EQ(buf.size, sizeof(buf_));
+        CHECK_EQ(buf.required_size, 0);
         dir_count = file_count = 0;
         bool ok = walk_entries(dirname, entry_visitor, &buf);
         CHECK(ok);

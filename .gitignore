@@ -3,6 +3,10 @@
 \#*
 *~
 
+# clangd
+compile_commands.json
+.cache
+
 # Visual Studio files
 .vs/
 .vscode/

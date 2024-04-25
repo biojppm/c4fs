@@ -26,6 +26,43 @@
 #endif
 
 
+#ifdef C4FS_DBG
+#include <c4/dump.hpp>
+namespace c4 {
+namespace fs {
+inline void _dbg_dumper(csubstr s) { fwrite(s.str, 1, s.len, stdout); };
+inline substr _dbg_buf()
+{
+    static char writebuf_[1024];
+    substr buf(writebuf_);
+    C4_ASSERT(buf.len + 1 == sizeof(writebuf_));
+    return buf;
+}
+template<class ...Args>
+void _dbg_printf(c4::csubstr fmt, Args&& ...args)
+{
+    substr buf = _dbg_buf();
+    auto results = c4::format_dump_resume<&_dbg_dumper>(buf, fmt, std::forward<Args>(args)...);
+    // resume writing if the results failed to fit the buffer
+    if(C4_UNLIKELY(results.bufsize > buf.len)) // bufsize will be that of the largest element serialized. Eg int(1), will require 1 byte.
+    {
+        results = format_dump_resume<&_dbg_dumper>(results, buf, fmt, std::forward<Args>(args)...);
+        if(C4_UNLIKELY(results.bufsize > buf.len))
+        {
+            results = format_dump_resume<&_dbg_dumper>(results, buf, fmt, std::forward<Args>(args)...);
+        }
+    }
+}
+}
+}
+#define _c4fs_dbg(msg) c4::fs::_dbg_printf("{}:{}: {}\n", __FILE__, __LINE__, msg)
+#define _c4fs_dbgf(fmt, ...) c4::fs::_dbg_printf("{}:{}: " fmt "\n", __FILE__, __LINE__, __VA_ARGS__)
+#else
+#define _c4fs_dbg(...)
+#define _c4fs_dbgf(...)
+#endif
+
+
 namespace c4 {
 namespace fs {
 
@@ -278,7 +315,8 @@ void mkdirs(char *pathname)
 {
     size_t sz = strlen(pathname);
     // add 1 to len because we know that the buffer has a null terminator
-    c4::substr dir, buf = {pathname, 1 + sz};
+    c4::substr buf = {pathname, 1 + sz};
+    c4::substr dir;
     size_t start_pos = 0;
     while(buf.next_split('/', &start_pos, &dir))
     {
@@ -451,11 +489,12 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
     C4_CHECK(is_dir(pathname));
     C4_CHECK((buf->buf == nullptr) == (buf->size == 0));
     csubstr base = to_csubstr(pathname);
-    size_t base_size = (base.len + 1/*'/'*/) + 1/*'\0'*/;
+    size_t base_size = (base.len + 1/* / */) + 1/* \0 */;
     substr namebuf(buf->buf, buf->size);
     size_t maxlen = 0;
     C4_ASSERT(!namebuf.overlaps(base));
     buf->required_size = base_size;
+    _c4fs_dbgf("base=~~~{}~~~ reqsz={}", base, buf->required_size);
     VisitedFile vp;
     vp.user_data = user_data;
     vp.name = namebuf.str;
@@ -480,9 +519,11 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
             continue;
         if(strcmp(entry->d_name, "..") == 0)
             continue;
-        csubstr entry_name = to_csubstr(entry->d_name);
+        csubstr entry_name = to_csubstr((const char*)entry->d_name);
         maxlen = entry_name.len > maxlen ? entry_name.len : maxlen;
         buf->required_size = base_size + maxlen + 1;
+        _c4fs_dbgf("base=[{}]~~~{}~~~ entry=[{}]~~~{}~~~ valid={} maxlen={}",
+                   base.len, base, entry_name.len, entry_name, buf->valid(), maxlen);
         if(buf->valid())
         {
             substr after_slash = namebuf.sub(base.len + 1);
@@ -519,7 +560,7 @@ bool walk_entries(const char *pathname, FileVisitor fn, maybe_buf<char> *buf, vo
             continue;
         if(!strcmp(ffd.cFileName, ".."))
             continue;
-        csubstr entry_name = to_csubstr(ffd.cFileName);
+        csubstr entry_name = to_csubstr((const char*)ffd.cFileName);
         maxlen = entry_name.len > maxlen ? entry_name.len : maxlen;
         buf->required_size = base_size + maxlen + 1;
         if(buf->valid())
@@ -572,7 +613,7 @@ int _walk_tree(PathVisitor fn, void *user_data, substr namebuf, size_t namelen)
             continue;
         if(!strcmp(ffd.cFileName, ".."))
             continue;
-        csubstr entry_name = to_csubstr(ffd.cFileName);
+        csubstr entry_name = to_csubstr((const char*)ffd.cFileName);
         if(filenamebuf.len < entry_name.len + 2)
         {
             exit_status = ENAMETOOLONG;
