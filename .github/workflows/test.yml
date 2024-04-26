@@ -59,11 +59,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {std: 11, cxx: g++-7, bt: Coverage, os: ubuntu-18.04, bitlinks: shared64 static64}
-          - {std: 11, cxx: g++-7, bt: Coverage, os: ubuntu-18.04, bitlinks: shared32 static32}
-          - {std: 17, cxx: g++-7, bt: Coverage, os: ubuntu-18.04, bitlinks: shared64 static64}
-          - {std: 17, cxx: g++-7, bt: Coverage, os: ubuntu-18.04, bitlinks: shared32 static32}
-    env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}", CODECOV_TOKEN: "${{secrets.CODECOV_TOKEN}}", COVERALLS_REPO_TOKEN: "${{secrets.COVERALLS_REPO_TOKEN}}"}
+          - {std: 11, cxx: g++-9, bt: Coverage, bitlinks: shared64 static64, os: ubuntu-20.04}
+          - {std: 11, cxx: g++-9, bt: Coverage, bitlinks: shared32 static32, os: ubuntu-20.04}
+          - {std: 17, cxx: g++-9, bt: Coverage, bitlinks: shared64 static64, os: ubuntu-20.04}
+          - {std: 17, cxx: g++-9, bt: Coverage, bitlinks: shared32 static32, os: ubuntu-20.04}
+    env: {
+      STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}",
+      CODECOV_TOKEN: "${{secrets.CODECOV_TOKEN}}",
+      COVERALLS_REPO_TOKEN: "${{secrets.COVERALLS_REPO_TOKEN}}",
+      COVERALLS_PARALLEL: true
+    }
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
       - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
@@ -122,16 +127,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {std: 11, cxx: vs2017, bt: Debug  , os: windows-2016, bitlinks: shared64 static32}
-          - {std: 11, cxx: vs2017, bt: Release, os: windows-2016, bitlinks: shared64 static32}
-          - {std: 14, cxx: vs2017, bt: Debug  , os: windows-2016, bitlinks: shared64 static32}
-          - {std: 14, cxx: vs2017, bt: Release, os: windows-2016, bitlinks: shared64 static32}
           - {std: 11, cxx: vs2019, bt: Debug  , os: windows-2019, bitlinks: shared64 static32}
           - {std: 11, cxx: vs2019, bt: Release, os: windows-2019, bitlinks: shared64 static32}
           - {std: 17, cxx: vs2019, bt: Debug  , os: windows-2019, bitlinks: shared64 static32}
           - {std: 17, cxx: vs2019, bt: Release, os: windows-2019, bitlinks: shared64 static32}
           - {std: 20, cxx: vs2019, bt: Debug  , os: windows-2019, bitlinks: shared64 static32}
           - {std: 20, cxx: vs2019, bt: Release, os: windows-2019, bitlinks: shared64 static32}
+          - {std: 11, cxx: vs2022, bt: Debug  , os: windows-2022, bitlinks: shared64 static32}
+          - {std: 11, cxx: vs2022, bt: Release, os: windows-2022, bitlinks: shared64 static32}
+          - {std: 20, cxx: vs2022, bt: Debug  , os: windows-2022, bitlinks: shared64 static32}
+          - {std: 20, cxx: vs2022, bt: Release, os: windows-2022, bitlinks: shared64 static32}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
@@ -199,21 +204,23 @@ jobs:
   #----------------------------------------------------------------------------
   gcc_canary:
     continue-on-error: true
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
+    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {std: 11, cxx: g++-7      , bt: Debug  , os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 11, cxx: g++-7      , bt: Release, os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 20, cxx: g++-10     , bt: Debug  , os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 20, cxx: g++-10     , bt: Release, os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 11, cxx: g++-5      , bt: Debug  , os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 11, cxx: g++-5      , bt: Release, os: ubuntu-18.04, bitlinks: shared64 static32}
+          - {std: 11, cxx: g++-7      , bt: Debug  , bitlinks: shared64 static32}
+          - {std: 11, cxx: g++-7      , bt: Release, bitlinks: shared64 static32}
+          - {std: 20, cxx: g++-10     , bt: Debug  , bitlinks: shared64 static32}
+          - {std: 20, cxx: g++-10     , bt: Release, bitlinks: shared64 static32}
+          - {std: 11, cxx: g++-5      , bt: Debug  , bitlinks: shared64 static32}
+          - {std: 11, cxx: g++-5      , bt: Release, bitlinks: shared64 static32}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+      - run: c4core-install ${{matrix.cxx}}
       - {name: show info, run: source .github/setenv.sh && c4_show_info}
       - name: shared64-configure---------------------------------------------------
         run: source .github/setenv.sh && c4_cfg_test shared64
@@ -239,19 +246,21 @@ jobs:
   #----------------------------------------------------------------------------
   clang_canary:
     continue-on-error: true
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
+    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {std: 17, cxx: clang++-10 , bt: Debug  , os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 17, cxx: clang++-10 , bt: Release, os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 11, cxx: clang++-6.0, bt: Debug  , os: ubuntu-18.04, bitlinks: shared64 static32}
-          - {std: 11, cxx: clang++-6.0, bt: Release, os: ubuntu-18.04, bitlinks: shared64 static32}
+          - {std: 17, cxx: clang++-10 , bt: Debug  , bitlinks: shared64 static32}
+          - {std: 17, cxx: clang++-10 , bt: Release, bitlinks: shared64 static32}
+          - {std: 11, cxx: clang++-6.0, bt: Debug  , bitlinks: shared64 static32}
+          - {std: 11, cxx: clang++-6.0, bt: Release, bitlinks: shared64 static32}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+      - run: c4core-install ${{matrix.cxx}}
       - {name: show info, run: source .github/setenv.sh && c4_show_info}
       - name: shared64-configure---------------------------------------------------
         run: source .github/setenv.sh && c4_cfg_test shared64
@@ -277,20 +286,22 @@ jobs:
   #----------------------------------------------------------------------------
   clang_tidy:
     continue-on-error: true
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
+    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
     strategy:
       fail-fast: false
       matrix:
         include:
           # clang tidy takes a long time, so don't do multiple bits/linktypes
-          - {std: 11, cxx: clang++-9, bt: Debug             , lint: clang-tidy, bitlinks: shared64 static64, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-9, bt: Debug             , lint: clang-tidy, bitlinks: shared32 static32, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-9, bt: ReleaseWithDebInfo, lint: clang-tidy, bitlinks: shared64 static64, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-9, bt: ReleaseWithDebInfo, lint: clang-tidy, bitlinks: shared32 static32, os: ubuntu-18.04}
+          - {std: 11, cxx: clang++-9, bt: Debug             , lint: clang-tidy, bitlinks: shared64 static64}
+          - {std: 11, cxx: clang++-9, bt: Debug             , lint: clang-tidy, bitlinks: shared32 static32}
+          - {std: 11, cxx: clang++-9, bt: ReleaseWithDebInfo, lint: clang-tidy, bitlinks: shared64 static64}
+          - {std: 11, cxx: clang++-9, bt: ReleaseWithDebInfo, lint: clang-tidy, bitlinks: shared32 static32}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+      - run: c4core-install ${{matrix.cxx}}
       - {name: show info, run: source .github/setenv.sh && c4_show_info}
       - name: shared64-configure---------------------------------------------------
         run: source .github/setenv.sh && c4_cfg_test shared64
@@ -316,35 +327,37 @@ jobs:
   #----------------------------------------------------------------------------
   gcc_extended:
     continue-on-error: true
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
+    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
     strategy:
       fail-fast: false
       matrix:
         include:
           #                                     VALGRIND
-          - {std: 11, cxx: g++-10, bt: Debug  , vg: ON, os: ubuntu-18.04}
-          - {std: 11, cxx: g++-10, bt: Release, vg: ON, os: ubuntu-18.04}
-          - {std: 14, cxx: g++-10, bt: Debug  , vg: ON, os: ubuntu-18.04}
-          - {std: 14, cxx: g++-10, bt: Release, vg: ON, os: ubuntu-18.04}
-          - {std: 17, cxx: g++-10, bt: Debug  , vg: ON, os: ubuntu-18.04}
-          - {std: 17, cxx: g++-10, bt: Release, vg: ON, os: ubuntu-18.04}
-          - {std: 20, cxx: g++-10, bt: Debug  , vg: ON, os: ubuntu-18.04}
-          - {std: 20, cxx: g++-10, bt: Release, vg: ON, os: ubuntu-18.04}
+          - {std: 11, cxx: g++-10, bt: Debug  , vg: ON}
+          - {std: 11, cxx: g++-10, bt: Release, vg: ON}
+          - {std: 14, cxx: g++-10, bt: Debug  , vg: ON}
+          - {std: 14, cxx: g++-10, bt: Release, vg: ON}
+          - {std: 17, cxx: g++-10, bt: Debug  , vg: ON}
+          - {std: 17, cxx: g++-10, bt: Release, vg: ON}
+          - {std: 20, cxx: g++-10, bt: Debug  , vg: ON}
+          - {std: 20, cxx: g++-10, bt: Release, vg: ON}
           #
-          - {std: 11, cxx: g++-9, bt: Debug  , os: ubuntu-18.04}
-          - {std: 11, cxx: g++-9, bt: Release, os: ubuntu-18.04}
-          - {std: 11, cxx: g++-8, bt: Debug  , os: ubuntu-18.04}
-          - {std: 11, cxx: g++-8, bt: Release, os: ubuntu-18.04}
-          - {std: 11, cxx: g++-7, bt: Debug  , os: ubuntu-18.04}
-          - {std: 11, cxx: g++-7, bt: Release, os: ubuntu-18.04}
-          - {std: 11, cxx: g++-6, bt: Debug  , os: ubuntu-18.04}
-          - {std: 11, cxx: g++-6, bt: Release, os: ubuntu-18.04}
-          - {std: 11, cxx: g++-5, bt: Debug  , os: ubuntu-18.04}
-          - {std: 11, cxx: g++-5, bt: Release, os: ubuntu-18.04}
+          - {std: 11, cxx: g++-9, bt: Debug  }
+          - {std: 11, cxx: g++-9, bt: Release}
+          - {std: 11, cxx: g++-8, bt: Debug  }
+          - {std: 11, cxx: g++-8, bt: Release}
+          - {std: 11, cxx: g++-7, bt: Debug  }
+          - {std: 11, cxx: g++-7, bt: Release}
+          - {std: 11, cxx: g++-6, bt: Debug  }
+          - {std: 11, cxx: g++-6, bt: Release}
+          - {std: 11, cxx: g++-5, bt: Debug  }
+          - {std: 11, cxx: g++-5, bt: Release}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+      - run: c4core-install ${{matrix.cxx}}
       - {name: show info, run: source .github/setenv.sh && c4_show_info}
       - name: shared64-configure---------------------------------------------------
         run: source .github/setenv.sh && c4_cfg_test shared64
@@ -370,29 +383,31 @@ jobs:
   #----------------------------------------------------------------------------
   clang_extended:
     continue-on-error: true
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
+    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {std: 11, cxx: clang++-9  , bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-9  , bt: Release, vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-8  , bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-8  , bt: Release, vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-7  , bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-7  , bt: Release, vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-6.0, bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-6.0, bt: Release, vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-5.0, bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-5.0, bt: Release, vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-4.0, bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-4.0, bt: Release, vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-3.9, bt: Debug  , vg: on, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-3.9, bt: Release, vg: on, os: ubuntu-18.04}
+          - {std: 11, cxx: clang++-9  , bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-9  , bt: Release, vg: on}
+          - {std: 11, cxx: clang++-8  , bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-8  , bt: Release, vg: on}
+          - {std: 11, cxx: clang++-7  , bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-7  , bt: Release, vg: on}
+          - {std: 11, cxx: clang++-6.0, bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-6.0, bt: Release, vg: on}
+          - {std: 11, cxx: clang++-5.0, bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-5.0, bt: Release, vg: on}
+          - {std: 11, cxx: clang++-4.0, bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-4.0, bt: Release, vg: on}
+          - {std: 11, cxx: clang++-3.9, bt: Debug  , vg: on}
+          - {std: 11, cxx: clang++-3.9, bt: Release, vg: on}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+      - run: c4core-install ${{matrix.cxx}}
       - {name: show info, run: source .github/setenv.sh && c4_show_info}
       - name: shared64-configure---------------------------------------------------
         run: source .github/setenv.sh && c4_cfg_test shared64
@@ -418,40 +433,42 @@ jobs:
   #----------------------------------------------------------------------------
   clang_sanitize:
     continue-on-error: true
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
+    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
     strategy:
       fail-fast: false
       matrix:
         include:
           # these jobs take much longer, so run only one bitlink pair per job to profit from parallelism
-          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared64, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static64, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared32, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static32, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared64, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static64, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared32, os: ubuntu-18.04}
-          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static32, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared64, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static64, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared32, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static32, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared64, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static64, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared32, os: ubuntu-18.04}
-          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static32, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared64, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static64, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared32, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static32, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared64, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static64, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared32, os: ubuntu-18.04}
-          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static32, os: ubuntu-18.04}
+          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared64}
+          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static64}
+          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared32}
+          - {std: 11, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static32}
+          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared64}
+          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static64}
+          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared32}
+          - {std: 11, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static32}
+          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared64}
+          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static64}
+          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared32}
+          - {std: 17, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static32}
+          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared64}
+          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static64}
+          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared32}
+          - {std: 17, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static32}
+          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared64}
+          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static64}
+          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: shared32}
+          - {std: 20, cxx: clang++-10, bt: Debug  , vg: ON, san: ALL, bitlinks: static32}
+          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared64}
+          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static64}
+          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: shared32}
+          - {std: 20, cxx: clang++-10, bt: Release, vg: ON, san: ALL, bitlinks: static32}
     env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
     steps:
       - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+      - run: c4core-install ${{matrix.cxx}}
       - {name: show info, run: source .github/setenv.sh && c4_show_info}
       - name: shared64-configure---------------------------------------------------
         run: source .github/setenv.sh && c4_cfg_test shared64
@@ -478,24 +495,26 @@ jobs:
 #  # https://blog.kitware.com/static-checks-with-cmake-cdash-iwyu-clang-tidy-lwyu-cpplint-and-cppcheck/
 #  static_analysis:
 #    continue-on-error: true
-#    runs-on: ${{matrix.os}}
+#    runs-on: ubuntu-latest
+#    container: ghcr.io/biojppm/c4core/ubuntu18.04:latest  # use the docker image
 #    strategy:
 #      fail-fast: false
 #      matrix:
 #        include:
 #          # these jobs take much longer, so run only one bitlink pair per job to profit from parallelism
-#          - {std: 11, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 11, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 14, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 14, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 17, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 17, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 20, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-18.04}
-#          - {std: 20, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-18.04}
+#          - {std: 11, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 11, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 14, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 14, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 17, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 17, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 20, cxx: clang++-10, bt: Debug  , bitlinks: shared64, os: ubuntu-20.04}
+#          - {std: 20, cxx: clang++-10, bt: Release, bitlinks: shared64, os: ubuntu-20.04}
 #    env: {STD: "${{matrix.std}}", CXX_: "${{matrix.cxx}}", BT: "${{matrix.bt}}", BITLINKS: "${{matrix.bitlinks}}", VG: "${{matrix.vg}}", SAN: "${{matrix.san}}", LINT: "${{matrix.lint}}", OS: "${{matrix.os}}"}
 #    steps:
 #      - {name: checkout, uses: actions/checkout@v2, with: {submodules: recursive}}
-#      - {name: install requirements, run: source .github/reqs.sh && c4_install_test_requirements $OS}
+#      - run: git config --system --add safe.directory '*'  # needed for running in the docker image. see https://github.com/actions/checkout/issues/1169
+#      - run: c4core-install ${{matrix.cxx}}
 #      - {name: show info, run: source .github/setenv.sh && c4_show_info}
 #      - name: shared64-configure---------------------------------------------------
 #        run: source .github/setenv.sh && c4_cfg_test shared64
