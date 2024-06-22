@@ -437,10 +437,10 @@ void copy_file(const char *file, const char *dst)
     }
 
   out_error:
-    C4_ERROR("i/o error");
     close(fd_from);
     if (fd_to >= 0)
         close(fd_to);
+    C4_ERROR("i/o error");
     return;
 #elif defined(C4_WIN) || defined(__MINGW32__)
     C4_CHECK(CopyFile(file, dst, /*failifexists*/true));
