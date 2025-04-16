@@ -13,8 +13,6 @@
 #include <dirent.h>
 #endif
 
-#include "c4/c4_push.hpp"
-
 #if defined(C4_WIN) || defined(__MINGW32__)
 #   include <windef.h>
 #   include <winbase.h>
@@ -843,5 +841,3 @@ C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 } // namespace fs
 } // namespace c4
-
-#include "c4/c4_pop.hpp"
