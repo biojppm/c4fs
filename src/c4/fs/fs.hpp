@@ -1,6 +1,7 @@
 #ifndef _c4_FS_HPP_
 #define _c4_FS_HPP_
 
+#include <type_traits>
 #include <c4/fs/export.hpp>
 #include <c4/error.hpp>
 #include <c4/substr.hpp>
@@ -21,6 +22,8 @@ typedef struct _WIN32_FIND_DATAA WIN32_FIND_DATAA;
 
 namespace c4 {
 namespace fs {
+
+using ssize_t = typename std::make_signed<size_t>::type;
 
 C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wold-style-cast")
 
