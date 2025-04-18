@@ -13,11 +13,9 @@
 #include <dirent.h>
 #endif
 
+#include "c4/c4_push.hpp"
+
 #if defined(C4_WIN) || defined(__MINGW32__)
-#   define NOMINMAX
-#   define NOGDI
-#   define VC_EXTRALEAN
-#   define WIN32_LEAN_AND_MEAN
 #   include <windef.h>
 #   include <winbase.h>
 #   include <minwindef.h>
@@ -845,3 +843,5 @@ C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 } // namespace fs
 } // namespace c4
+
+#include "c4/c4_pop.hpp"
