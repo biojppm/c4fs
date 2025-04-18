@@ -14,6 +14,10 @@
 #endif
 
 #if defined(C4_WIN) || defined(__MINGW32__)
+#   define NOMINMAX
+#   define NOGDI
+#   define VC_EXTRALEAN
+#   define WIN32_LEAN_AND_MEAN
 #   include <windef.h>
 #   include <winbase.h>
 #   include <minwindef.h>
