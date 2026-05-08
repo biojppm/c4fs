@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
-include(./ext/c4core/cmake/c4Project.cmake)
 project(c4fs
     DESCRIPTION "C++ filesystem utilities"
     HOMEPAGE_URL "https://github.com/biojppm/c4fs"
     LANGUAGES CXX)
+include(./ext/c4core/cmake/c4Project.cmake)
 c4_project(VERSION 0.0.1 STANDALONE
     AUTHOR "Joao Paulo Magalhaes <dev@jpmag.me>")
 
