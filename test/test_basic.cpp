@@ -1,6 +1,7 @@
 #include <c4/fs/fs.hpp>
 #include <c4/std/std.hpp>
 #include <c4/substr.hpp>
+#include <c4/types.hpp>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 #include <stdlib.h>
